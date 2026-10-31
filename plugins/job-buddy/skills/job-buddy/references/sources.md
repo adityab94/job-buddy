@@ -1,6 +1,6 @@
 # Where jobs come from
 
-Five ways in. Each person switches on the ones that fit them in profile.md ("Sources").
+Six ways in. Each person switches on the ones that fit them in profile.md ("Sources").
 The aim is to keep raw listings out of the conversation: filter first, read only what survives.
 
 ## 1. Indeed connector (official, optional)
@@ -19,7 +19,37 @@ Indeed's own Claude connector: `search_jobs` (search, location, country_code, jo
   Tier A roles with no stated salary, and for interview prep.
 - Indeed's listings also feed Glassdoor, so there is no need to search Glassdoor separately.
 
-## 2. Browser collector (free, built-in browser, Windows and Mac)
+## 2. JobDataLake connector (free, optional, tech and business roles)
+
+A job-data MCP that reads ~25,000 companies' own career sites, refreshed hourly. Its tools
+have their own names: `search_jobs` (JobDataLake's, not Indeed's), `get_job`, `get_company`,
+`find_similar_jobs`, `get_filter_options`. Free: 500 calls a day, no account. The free pool
+may be shared between users, so keep calls few; if it says the limit is reached, skip it.
+
+What it adds that nothing else here does:
+- **Workday career sites** (large employers: Salesforce, Mastercard, McKesson, ServiceNow…),
+  which the collector can't read.
+- **`find_similar_jobs`**: given a Tier A role found here, finds lookalikes. Use it after a
+  search turns up a strong A.
+- Real filters: `countries` (ISO, e.g. `IE`), `posted_within` (`24h`, `7d`, `30d`),
+  `seniority`, `remote_type`, `employment_type`.
+
+How to use it:
+- One `search_jobs` per track, using the track's most distinctive keyword (short keywords
+  match best: "revenue operations", not a full title), with `countries` set to the
+  profile's country and `posted_within` matching the recency setting.
+- Results are short (~150 tokens per job). The `ID` is a stable handle; still dedupe on
+  company + title like everything else.
+- **Recheck location.** Its location tags are sometimes wrong (a UK-only remote role came
+  back tagged Ireland). Confirm from the full description before scoring.
+
+Limits (tested 31 Oct 2026, Ireland): thin for niche business roles ("revenue operations" 2
+jobs, "sales operations" 1, "GTM" 0) and nothing for health or most non-tech fields ("nurse"
+0). Job categories are tech and business only, and its semantic search covers remote tech
+roles only. So: switch it on for tech, data, sales/ops and big-company targets; leave it off
+for health, public sector and research users.
+
+## 3. Browser collector (free, built-in browser, Windows and Mac)
 
 `scripts/collector.js`, shipped with this skill. It runs inside the Claude desktop app's built-in
 browser, fetches public feeds, filters them in the page and returns short rows only.
@@ -58,7 +88,7 @@ company moved board; tell the user and fix the watchlist.
 If a site's layout changes, the collector reports zero listings or an error for it. Say so in
 one line; never report "no new roles" when a source failed.
 
-## 3. Job-alert emails (Gmail connector, optional)
+## 4. Job-alert emails (Gmail connector, optional)
 
 Covers LinkedIn, Indeed, IrishJobs and Glassdoor without scraping. The user sets up free
 alerts on those sites for their titles and location. When the Gmail connector is connected,
@@ -67,13 +97,13 @@ OR irishjobs.ie) newer_than:7d`), pull title, company, location and link from ea
 then filter and score like any other row. If there is no Gmail, users can forward or paste
 alert emails.
 
-## 4. Pasted links and text (always on)
+## 5. Pasted links and text (always on)
 
 Any link or job text the user shares. Open the link; LinkedIn's public job page usually
 works for a single job. If a page is blocked (Indeed or IrishJobs pages, sign-in walls),
 ask the user to paste the job text instead. Never try to get past a security check.
 
-## 5. Field-specific sites
+## 6. Field-specific sites
 
 Chosen during setup, read with the built-in browser like any public page:
 publicjobs.ie (Irish public service), HSE and hospital group careers (health),

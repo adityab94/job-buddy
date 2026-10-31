@@ -8,7 +8,7 @@ Context for Claude Code working in this repo. Read this first.
 search from a local folder: it builds a scoring rubric for their field, finds roles, scores them
 0–100 (tiers A/B/C), tailors CVs and cover letters honestly, and keeps an application tracker.
 Audience: job seekers in any field (Ireland/EU default), many non-technical, on Windows or Mac.
-Repo: https://github.com/adityab94/job-buddy · Licence: MIT · Current version: 0.3.0
+Repo: https://github.com/adityab94/job-buddy · Licence: MIT · Current version: 0.3.1
 
 ## Repo layout
 
@@ -43,6 +43,10 @@ Install line: `/plugin install job-buddy --marketplace adityab94/job-buddy`
    - Indeed **official connector** (`search_jobs`, `get_job_details`, `get_company_data`). Works for
      IE. No date filter, so recency is applied by the skill. Job IDs are session-scoped; dedupe on
      company+title. Indeed listings also feed Glassdoor, so Glassdoor is not searched separately.
+   - **JobDataLake MCP** (optional, free, no account; `https://mcp.jobdatalake.com`). Adds
+     Workday-hosted big-employer roles and `find_similar_jobs`. Thin for Ireland niche roles,
+     nothing for health/public sector (tested 31 Oct 2026). Free pool (500/day) may be shared,
+     so it's documented as a custom connector, not bundled in the plugin.
    - **Browser collector**, run from a builtindublin.ie page: Greenhouse, Lever, Ashby,
      SmartRecruiters, Workable public APIs (per company watchlist), Remotive, RemoteOK, Arbeitnow
      (CORS-open), Built In Dublin (same-origin fetch). `JSA.jobsie()` from a jobs.ie page.
@@ -83,8 +87,8 @@ Install line: `/plugin install job-buddy --marketplace adityab94/job-buddy`
 
 ## Next actions
 
-1. **First push** of this folder to adityab94/job-buddy (only the contents of this folder; check
-   `.claude-plugin/` is at repo root). Tag `v0.3.0` and attach `job-buddy-skill.zip` to a Release.
+1. ~~**First push**, tag `v0.3.0` and Release with the zip.~~ Done 31 Oct 2026; v0.3.1 added
+   JobDataLake as an optional connector.
 2. **Install test from GitHub**: `/plugin install job-buddy --marketplace adityab94/job-buddy`, then
    "set me up" on an empty folder. Verify the workspace template is copied and setup completes.
 3. **Retest two sources** marked untested in sources.md: Workable (needs a real company slug) and

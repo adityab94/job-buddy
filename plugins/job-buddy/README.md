@@ -16,7 +16,7 @@ Install (Claude Code):
 - Keeps an application tracker and reviews what's working
 
 Free to run: no paid scrapers, no API keys. It never logs in, applies or messages anyone for you.
-See CONNECTORS.md for the optional Indeed and Gmail connectors.
+See CONNECTORS.md for the optional Indeed, Gmail and JobDataLake connectors.
 
 Things to say: "set me up", "find me roles", "is this a good fit? <link>",
 "tailor my CV for <company>", "I heard back from <company>", "how's my search going?",

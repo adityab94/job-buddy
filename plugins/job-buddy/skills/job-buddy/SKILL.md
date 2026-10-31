@@ -97,6 +97,8 @@ every tailoring decision flows from it.
    rubber-stamped.
 5. **Set up sources** (read `references/sources.md`). In plain words, offer:
    - Indeed connector (if it's connected, or offer to connect it),
+   - JobDataLake connector, only for tech, data, sales/ops or big-company targets (free;
+     adds large employers' own career sites),
    - the free browser collector (Built In Dublin, Jobs.ie, remote feeds, and a company
      watchlist: ask for 5–15 companies they'd love to work at and find their job-board IDs),
    - job-alert emails if they use Gmail (to cover LinkedIn and IrishJobs),
@@ -121,6 +123,9 @@ Read `references/sources.md` first. Then, per active track (or all tracks merged
    - **inbox/:** if it has files, read those first, then move them to `inbox/done/`.
    - **Indeed connector:** one `search_jobs` per target title (place + "remote" if remote is
      accepted; `fulltime` for permanent-only users).
+   - **JobDataLake connector:** if connected and switched on, one `search_jobs` per track
+     with `countries` and `posted_within` set. After the search, `find_similar_jobs` on any
+     strong Tier A it returned. Recheck its location tags before scoring.
    - **Browser collector:** build CONFIG from the profile and run `scripts/collector.js` as the
      guide describes. It returns only rows that pass titles, excludes, location, recency and
      the seen list.
@@ -134,7 +139,8 @@ Read `references/sources.md` first. Then, per active track (or all tracks merged
 3. **Quick score** each survivor from title, company, location and any snippet: likely A/B
    or not. Add rejects to `seen.txt` (`company|title|date`) with no further reading.
 4. **Full score** likely A/B roles only: open the full description (`get_job_details` for
-   Indeed, the link otherwise) and run **Score a role**. Check hard filters first.
+   Indeed, `get_job` for JobDataLake, the link otherwise) and run **Score a role**. Check
+   hard filters first.
 5. **Salary check:** for Tier A roles with no stated salary, use Indeed's `get_company_data`
    (if connected) for a salary signal against the floor.
 6. **Write** every fully scored role to the tracker with Status `Found` and its Track.

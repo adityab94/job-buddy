@@ -23,6 +23,7 @@ You can edit anything here yourself at any time.)
 | Source | On? | Notes |
 |---|---|---|
 | Indeed (connector) | | country code, location |
+| JobDataLake (connector) | | tech, data, sales/ops; big companies' own career sites |
 | Built In Dublin (browser) | | tech and startup roles |
 | Company watchlist (browser) | | see table below |
 | Jobs.ie (browser) | | sister site of IrishJobs |

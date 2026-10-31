@@ -26,7 +26,7 @@ Updates: push a new version here and users get it when they update the marketpla
 2. Put your CV in it, or attach it in the chat.
 3. Say **"set me up"**. Claude builds your workspace, interviews you, drafts your rubric and
    switches on your job sources.
-4. Optional: connect **Indeed** and **Gmail** (see `plugins/job-buddy/CONNECTORS.md`),
+4. Optional: connect **Indeed**, **Gmail** and **JobDataLake** (see `plugins/job-buddy/CONNECTORS.md`),
    and set up free job alerts on LinkedIn, Indeed and IrishJobs.
 
 Then say **"find me roles"**, paste a job link, or **"tailor my CV for <company>"**.
@@ -37,7 +37,7 @@ Then say **"find me roles"**, paste a job link, or **"tailor my CV for <company>
 .claude-plugin/marketplace.json            ← makes this repo installable as a marketplace
 plugins/job-buddy/
   .claude-plugin/plugin.json
-  CONNECTORS.md                            ← optional Indeed and Gmail connectors
+  CONNECTORS.md                            ← optional Indeed, Gmail and JobDataLake connectors
   skills/job-buddy/
     SKILL.md                               ← the instructions Claude follows
     references/                            ← rubric design, sources, tailoring, outcomes
