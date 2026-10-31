@@ -78,7 +78,8 @@ How well the role fits what you want. Weights add up to 100.
 - Tier C: anything else (long shot: only with a reason)
 
 ### Tailoring notes
-- CV length / format notes:
+- CV length: auto (1 page under 7 years' experience, up to 1.5 pages from 7 years; say if you want different)
+- Format notes:
 - Always mention:
 - Never mention:
 

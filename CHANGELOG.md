@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.8.0 (31 Oct 2026)
+
+- **30-day learning plans.** "What should I learn?" now ends with a plan for the top gap: what
+  "good enough to interview" means, four weekly milestones, a project you build to prove it,
+  and free resources that are checked to exist (no guessed links).
+- **Stronger CVs, still honest.**
+  - A short numbers interview: Job Buddy asks for the two to four figures that would make your
+    bullets stronger and saves your answers for next time. It never invents numbers, even if
+    asked for "a measurable achievement in every bullet".
+  - Duties rewritten as outcomes, result first where there's a real result.
+  - Tailored to the kind of employer (startup, scale-up, large company, public sector).
+  - A recruiter skim test before you see it.
+  - Page length: 1 page under 7 years' experience (1.5 with good reason), up to 1.5 pages
+    from 7 years; margins no tighter than about 1.5 cm and text no smaller than 10 pt.
+- **Sharper cover letters.** Built around the role's top three needs, one proof per need,
+  about 200 words (250 at most), a specific ask instead of "I look forward to hearing from you".
+- Three new evals guard against invented numbers, guessed links and generic closes.
+
 ## 0.7.0 (31 Oct 2026)
 
 - **10-minute quick start.** Drop in your CV, say what you want and where, and see your first

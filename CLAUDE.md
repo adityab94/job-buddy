@@ -8,7 +8,7 @@ Context for Claude Code working in this repo. Read this first.
 search from a local folder: it builds a scoring rubric for their field, finds roles, scores them
 0–100 (tiers A/B/C), tailors CVs and cover letters honestly, and keeps an application tracker.
 Audience: job seekers in any field (Ireland/EU default), many non-technical, on Windows or Mac.
-Repo: https://github.com/adityab94/job-buddy · Licence: MIT · Current version: 0.7.0
+Repo: https://github.com/adityab94/job-buddy · Licence: MIT · Current version: 0.8.0
 
 ## Repo layout
 
@@ -68,7 +68,11 @@ Install line: `/plugin install job-buddy --marketplace adityab94/job-buddy`
    risks the user's account), Indeed/IrishJobs page scraping (Cloudflare/Akamai blocks), Apify or
    other paid scrapers (cost per user), getting past any security check.
 6. **Honesty rules** for tailoring live in references/tailoring.md: never invent skills, metrics
-   or titles; no keyword stuffing; plain human tone.
+   or titles; no keyword stuffing; plain human tone. Since 0.8: numbers interview (ask, save to
+   "Extra experience confirmed by me"), outcomes not duties, employer-type emphasis, recruiter
+   skim test, page rule (1 page <7 yrs, up to 1.5 from 7; margins >= ~1.5 cm, text >= 10 pt),
+   cover letters around top 3 needs, ~200 words, specific ask. 30-day plans in
+   references/learning-plan.md (only links opened this session).
 7. **Not a connector.** A hosted MCP connector can't reach the user's folder or built-in browser,
    and would mean storing CVs server-side. Plugin + GitHub marketplace is the distribution path.
    The shared feed is the exception that proves the rule: public job listings only, no user data.
