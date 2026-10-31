@@ -144,7 +144,10 @@ Install lines (Claude Code): `/plugin marketplace add adityab94/job-buddy`, then
 6. **Gmail alerts path**: test with real LinkedIn / Indeed / IrishJobs alert emails and document the
    exact sender addresses in sources.md.
 7. **Beta testers**: one non-tech user (e.g. public-health field) runs setup end to end; collect issues.
-8. **Later**: plugin directory submission (check Anthropic's current requirements).
+8. **Plugin directory:** submitted 31 Oct 2026 (v0.8.2, claude.ai/directory/manage, GitHub push
+   webhook). Held for policy review: logo.py reads logo-mask.png, binary tracker.xlsx template,
+   and a "credential from the user's machine" flag on plugin.json with no cause found. Until
+   listed, users must add the `adityab94/job-buddy` marketplace; plugin search won't find it.
 9. ~~Shared daily feed~~ Done in v0.5.0 (GitHub Actions, not Vercel). Grow `feed/watchlist-ie.json`
    (31 boards at launch); watch the "Feed health" issue.
 10. **Golden scoring set:** ~50 real job ads per field with human-labelled tiers, to measure tier
