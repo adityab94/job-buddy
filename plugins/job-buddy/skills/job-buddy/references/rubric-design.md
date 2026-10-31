@@ -1,91 +1,114 @@
-# Designing a rubric for any field
+# Building a strong rubric
 
-Each track in profile.md has its own rubric. Hard filters that apply to every track live in
-the profile's "Shared rules" section; track-specific filters (such as a salary floor) live
-in the track.
+The rubric decides every recommendation, so it has to be built from evidence, split into the
+two questions that actually decide a job, checked mechanically, and proven against the user's
+own judgement before it's trusted. Each kind of role (track) has its own.
 
-A rubric turns "does this job suit me?" into a repeatable score. It has three parts:
-hard filters, weighted dimensions, and tier cutoffs.
+A rubric has four parts: deal-breakers, "Can I get it?", "Do I want it?", and tiers.
 
-## 1. Hard filters (pass / fail)
+## 1. Deal-breakers (pass / fail)
 
-Things that make a role a no regardless of anything else. Keep this list short and literal,
-taken straight from the user's dealbreakers. Typical examples:
-- Location / work mode outside what they'll accept
-- Requires a licence, registration or clearance they don't hold and can't get quickly
-- Contract type they won't take (e.g. fixed-term under 6 months)
-- Salary clearly below their stated floor (only if the JD states salary)
-- Visa sponsorship needed but explicitly not offered
+Things that make a role a no regardless of anything else. Keep the list short and literal,
+taken straight from the user's words: location or office days outside what they'll accept, a
+licence or clearance they don't hold and can't get quickly, a contract type they won't take,
+salary clearly below their floor (only when the ad states it), visa sponsorship needed but
+refused. If an ad is silent on one, it passes, with a confidence note. Never score the same
+thing again as a dimension; a dimension may score only what's beyond the deal-breaker (e.g.
+"2 office days" vs "3" when the deal-breaker is "no more than 3").
 
-If a JD is silent on a filter, it passes, with a confidence note.
+## 2. Build from the real market, not a template
 
-## 2. Weighted dimensions (scored 1–5)
+1. **Gather 15–25 current ads** for the user's target role, in their place (or remote), from
+   the sources that are on: the shared feed, Indeed (`get_job_details` gives the full text),
+   JobDataLake, pasted links. Prefer variety: different employers, sizes and seniority within
+   reach. Save each ad's text as `jds/market/<Company - Role>.txt`. Read them in batches and
+   keep notes short; don't paste ads into the conversation.
+2. **List what employers ask for**: the recurring responsibilities, skills, tools,
+   credentials and experience levels, in the ads' own words. Then count them exactly:
+   `jb.py market <workspace> --terms "Salesforce/SFDC, forecasting, lead routing, Python"`
+   (use `/` for synonyms). Requirements in most ads are the core of "Can I get it?"; ones in
+   a few ads are differentiators.
+3. **Hold the CV against that list**: where they're strong, where they're thin, what they
+   have that the market values but rarely asks for.
 
-Use **4 to 6 dimensions**. Fewer is too blunt; more and the weights stop meaning anything.
-Weights are whole numbers summing to 100.
+## 3. "Can I get it?": how well they match what employers ask
 
-Most fields can be covered by adapting these building blocks. Rename them in the user's own
-language; a nurse's rubric should not say "tech stack".
+2–4 dimensions, weights summing to 100, each tied to a cluster of requirements from the
+market list. Every dimension records how many ads ask for it in a **Seen in** column (e.g.
+`18/20`): that's the evidence it belongs. Typical shapes, renamed in the field's own words:
+core day-to-day work, named skills / tools / credentials, level of experience, sector or
+setting. A nurse's rubric never says "tech stack".
 
-| Building block | What it asks | Usually weighted |
-|---|---|---|
-| Core role match | Is the day-to-day work the work they do / want to do? | Highest (25–35) |
-| Key skills or credentials | Do they have the specific skills, tools, methods, qualifications named? | High (15–25) |
-| Domain / sector fit | Same industry, population, setting or subject area? | Medium (10–20) |
-| Seniority fit | Does the level match where they are (or one step up)? | Medium (10–20) |
-| Location & work-mode fit | How well does it fit beyond the hard filter (commute, hybrid days)? | Low–medium (5–15) |
-| Growth / signal | Does it move them toward what they want next (a field-specific "signal")? | Low–medium (5–15) |
+## 4. "Do I want it?": how well the role fits what they want
 
-Field-specific "signal" dimensions are often the most useful part of a rubric because they
-capture what the user actually wants that a generic match misses. Examples:
-- RevOps person moving toward AI: "AI / automation signal" (agents, LLM workflows in the JD)
-- Researcher: "Funding & research environment" (named grants, PI track record, protected time)
-- Clinician: "Specialty & patient population"
-- Designer: "Product maturity & design culture"
+2–4 dimensions, weights summing to 100, from the user's own priorities: the work that excites
+them (e.g. "AI and automation", "research time", "patient population"), working pattern
+beyond the deal-breaker, growth toward where they want to be next, culture or mission signals
+they named. Ask what made their best and worst past jobs; that usually finds them.
 
-### Writing anchors
+Keep the two parts separate. A dream role they can't land and an easy role they'd hate must
+not look alike, and only the split shows the difference.
 
-Every dimension needs a short description of what a **5**, **3** and **1** look like, in
-concrete terms the user would recognise. Scores of 2 and 4 sit between anchors. Good anchors
-are observable in a job description:
+## 5. Anchors: what a 5, a 3 and a 1 look like
 
+Every dimension needs a short description of a **5**, **3** and **1** that you could check in
+a job ad. Scores of 2 and 4 sit between them.
 - Weak: "5 = great match"
-- Strong: "5 = JD's main responsibilities are things I've done for 2+ years; 3 = about half
-  overlap; 1 = mostly work I haven't done"
+- Strong: "5 = the ad's main responsibilities are things they've done for 2+ years;
+  3 = about half overlap; 1 = mostly work they haven't done"
 
-## 3. Tier cutoffs
+## 6. Tiers
 
-Weighted score = Σ (dimension score ÷ 5 × weight), giving 0–100.
-A dimension scored 1 contributes 20% of its weight, so the practical floor is 20.
+Each part scores 0–100 (Σ score ÷ 5 × weight). The overall score shown is their average, but
+the tier needs both:
+- **Tier A (great match): Get 70+ and Want 70+.** Tailor the CV and cover letter, apply.
+- **Tier B (good match): Get 55+ and Want 55+.** Worth applying.
+- **Tier C (long shot): anything else.** Only with a reason.
+Adjust the cut-offs per user only during calibration, and only with a reason they agree to.
 
-Default tiers (adjust per user after calibration):
-- **Tier A (75+)**: strong fit; tailor materials and apply
-- **Tier B (60–74)**: worth applying; tailor if time allows
-- **Tier C (under 60)**: stretch; only with a reason
+## 7. Check it
 
-## 4. Calibrate before trusting it
+Run `jb.py rubric <workspace> --check`. Fix every **problem** (weights not adding to 100, a
+part with too few or too many dimensions, missing anchors, tiers that don't make sense)
+before scoring anything. Treat **warnings** as weak spots: vague anchors, dimensions not
+grounded in market ads, two dimensions that are really one, overlap with a deal-breaker.
+Fix them unless there's a clear reason not to.
 
-Score two or three postings the user already has a strong opinion on. If the rubric disagrees
-with their gut, find out which dimension is wrong (anchor too generous? weight too high?) and
-fix that, rather than nudging the cutoffs. Log the change.
+## 8. Calibrate before trusting it
+
+Score eight real roles (the ones the search found are fine; the user never has to bring
+their own) and ask them to rate each great / okay / no. Run
+`jb.py calibrate <workspace> --apply` with their verdicts. At least 7 in 8 must agree before
+the rubric is marked CALIBRATED; until then every score is a first draft. For each
+disagreement, find the cause in the rubric (an anchor too generous, a weight too high, a
+priority missing) and fix that, rather than nudging the tier cut-offs. Say in plain words
+what changed, re-score, run it again. Log the result in the change log.
+
+Later, real outcomes take over: the search review checks whether Tier A gets more callbacks
+than Tier B (references/outcomes.md), and that evidence outranks the calibration.
 
 ---
 
-## Worked example: RevOps / GTM automation professional (Ireland)
+## Worked example: RevOps / GTM automation, Dublin
 
-Hard filters: Ireland-based (Dublin preferred) or remote from Ireland; permanent or 12+ month
-contract.
+Deal-breakers: Ireland-based or remote from Ireland; no more than 3 office days; permanent.
+Market: 20 Dublin RevOps ads (October 2026).
 
-| Dimension | Weight | 5 | 3 | 1 |
+#### Can I get it?
+| Dimension | Weight | 5 looks like | 3 looks like | 1 looks like | Seen in |
+|---|---|---|---|---|---|
+| Core RevOps work | 45 | Owns routing, forecasting and CRM processes end to end | RevOps is part of a wider ops or admin role | Mostly reporting or data entry | 18/20 |
+| Tools asked for | 30 | Salesforce and a workflow tool (HubSpot, Zapier, Workato) both central | One of them is named | Neither is mentioned | 15/20 |
+| Experience level | 25 | Asks for 4–7 years in RevOps or sales ops | Asks for 2–3 years, or 8+ | Graduate role, or Director level | 20/20 |
+
+#### Do I want it?
+| Dimension | Weight | 5 looks like | 3 looks like | 1 looks like |
 |---|---|---|---|---|
-| Core RevOps match | 30 | Owns CRM, quote-to-cash, forecasting or routing processes end to end | RevOps is part of the role alongside general ops or admin | Sales ops in name only; mostly reporting or data entry |
-| Automation & tooling | 25 | Salesforce plus workflow tooling (Zapier, HubSpot, Marketo, etc.) central to the job | Uses the tools but someone else builds | No meaningful systems work |
-| AI / agent signal | 15 | Building or running AI agents, LLM workflows or GTM automation is in scope | AI mentioned as a nice-to-have | No AI element |
-| Seniority fit | 20 | Analyst-to-Manager band with ~5 years expected | Slightly junior or a stretch up | Entry-level or Director+ |
-| Location fit | 10 | Dublin hybrid or fully remote in Ireland | Ireland but long commute / mostly on-site | Remote but awkward time zone |
+| AI and automation work | 55 | Building AI agents or automations is in scope | Automation is a nice-to-have | No automation or AI at all |
+| Office days | 25 | Two or fewer office days in Dublin | Three office days | (deal-breaker beyond this) |
+| Growth toward GTM engineering | 20 | Path to systems or GTM engineering is named | Small team where it could grow | Pure maintenance role |
 
-Tiers: A 75+, B 60–74, C under 60. Tailoring logic: Tier A gets a tailored CV and cover letter;
-Tier B gets a tailored summary and top bullets only.
+Tiers: A = Get 70+ and Want 70+; B = Get 55+ and Want 55+; C = anything else.
 
-Use this to show the shape and level of detail, not the content. A different field needs
-different dimensions.
+Use this for shape and level of detail, not content. A different field needs different
+dimensions, built from its own market.

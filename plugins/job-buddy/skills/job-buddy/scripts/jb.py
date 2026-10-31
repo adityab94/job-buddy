@@ -7,7 +7,9 @@ evidence against the saved job ad, and reads and writes the workspace files.
 Usage (WORKSPACE is the user's job-search folder; JSON goes in on stdin and comes out on stdout):
   jb.py check   WORKSPACE                 workspace version, missing files, whether openpyxl is present
   jb.py migrate WORKSPACE                 back up, then bring an older workspace up to date
-  jb.py rubric  WORKSPACE [--track T]     tracks with their weights and tier cut-offs
+  jb.py rubric  WORKSPACE [--track T] [--check]   tracks and tiers; --check runs the quality check
+  jb.py market  WORKSPACE --terms "a/b, c"        how many saved market ads (jds/market/) mention each
+  jb.py calibrate WORKSPACE [--track T] [--apply]  [{"company","role","verdict": great|okay|no}]
   jb.py score   WORKSPACE                 {"track", "company", "role", "jd_file",
                                            "dimensions": {name: {"score", "quote"}},
                                            "gaps": [{"skill", "dimension", "score_if_closed"}]}
@@ -29,14 +31,15 @@ import shutil
 import sys
 from pathlib import Path
 
-WORKSPACE_VERSION = 1
+WORKSPACE_VERSION = 2
 
 # Applications sheet layout. The Funnel sheet's formulas point at J (Tier), M (Status),
 # T (Applied?) and U (Callback?) by letter, so those positions are fixed; everything else is
 # found by header name.
 HEADERS = ["ID", "Date Found", "Company", "Role", "Location", "Source", "Job URL", "Date Posted",
            "Fit Score", "Tier", "Top Gap", "Materials", "Status", "Rejected At", "Date Applied",
-           "Last Update", "Days to Response", "Notes", "Next Action", "Applied?", "Callback?", "Track"]
+           "Last Update", "Days to Response", "Notes", "Next Action", "Applied?", "Callback?", "Track",
+           "Get Score", "Want Score"]
 FIXED = {"Tier": "J", "Status": "M", "Rejected At": "N", "Applied?": "T", "Callback?": "U"}
 FORMULA_COLS = ("Applied?", "Callback?")
 DATE_COLS = {"Date Found", "Date Posted", "Date Applied", "Last Update"}
@@ -99,37 +102,82 @@ def workspace_version(profile_text):
     return int(m.group(1)) if m else 0
 
 
+def _cells(line):
+    t = line.strip()
+    return [c.strip() for c in t.strip("|").split("|")] if t.startswith("|") else None
+
+
 def parse_tracks(profile_text):
-    """Tracks from profile.md: '## Track N: name' sections with a Rubric table and Tiers list."""
+    """Tracks from profile.md: '## Track N: name' sections with their rubric and tiers.
+
+    Current rubrics have two parts, '#### Can I get it?' and '#### Do I want it?', each a table
+    (Dimension | Weight | 5 looks like | 3 looks like | 1 looks like | Seen in) whose weights add
+    to 100, and tiers like 'Tier A: Get 70+ and Want 70+'. Older one-table rubrics with tiers like
+    'Tier A: 75+' still work ("single" mode)."""
     tracks = []
-    parts = re.split(r"^## (?=Track\b)", profile_text, flags=re.M)[1:]
-    for part in parts:
+    for part in re.split(r"^## (?=Track\b)", profile_text, flags=re.M)[1:]:
         part = re.split(r"^## (?!#)", part, maxsplit=1, flags=re.M)[0]  # stop at the next top section
-        head = part.splitlines()[0]
-        m = re.match(r"Track\s*(\d+)?\s*:?\s*(.*)", head)
+        m = re.match(r"Track\s*(\d+)?\s*:?\s*(.*)", part.splitlines()[0])
         num, name = (m.group(1) or ""), m.group(2).strip()
         status = re.search(r"^- Status:\s*(\S+)", part, re.M)
-        weights, in_table = {}, False
+        rstatus = re.search(r"^- Rubric status:\s*(.+)$", part, re.M)
+        dims, header, section = [], None, "single"
         for line in part.splitlines():
-            cells = [c.strip() for c in line.strip().strip("|").split("|")] if line.strip().startswith("|") else None
-            if cells and len(cells) >= 2 and cells[0].lower() == "dimension" and cells[1].lower() == "weight":
-                in_table = True
+            h4 = re.match(r"^####\s+(.*)", line)
+            if h4:
+                low = h4.group(1).lower()
+                section = "get" if "get" in low else "want" if "want" in low else "single"
                 continue
-            if in_table:
-                if not cells:
-                    in_table = False
-                    continue
-                if set(cells[0]) <= set("-: ") or not cells[0]:
-                    continue
-                try:
-                    weights[cells[0]] = float(cells[1])
-                except ValueError:
-                    pass
-        # "Tier A: 75+", "Tier B: 60-74" give cut-offs; "Tier C: under 60" is the remainder.
-        tiers = {t: int(n) for t, n in re.findall(r"Tier\s+([A-Z])\s*:\s*(\d+)", part)}
+            cells = _cells(line)
+            if not cells:
+                header = None
+                continue
+            low = [c.lower() for c in cells]
+            if len(low) >= 2 and low[0] == "dimension" and low[1] == "weight":
+                header = low
+                continue
+            if header is None or not cells[0] or set(cells[0]) <= set("-: "):
+                continue
+            try:
+                weight = float(cells[1])
+            except (ValueError, IndexError):
+                continue
+            col = lambda *names: next((cells[k] for k, hname in enumerate(header)
+                                      if any(n in hname for n in names) and k < len(cells)), "")
+            dims.append({"name": cells[0], "weight": weight, "part": section,
+                         "a5": col("5 "), "a3": col("3 "), "a1": col("1 "), "seen": col("seen", "evidence")})
+        two = {t: (int(g), int(w)) for t, g, w in re.findall(
+            r"Tier\s+([A-Z])\s*:\s*Get\s+(\d+)\+?\s*(?:and|&|,)\s*Want\s+(\d+)", part, re.I)}
+        mode = "two" if any(d["part"] in ("get", "want") for d in dims) else "single"
+        if mode == "two":
+            tiers = dict(sorted(two.items(), key=lambda kv: -sum(kv[1])))
+        else:
+            # "Tier A: 75+", "Tier B: 60-74" give cut-offs; "Tier C: under 60" is the remainder.
+            tiers = {t: int(n) for t, n in re.findall(r"Tier\s+([A-Z])\s*:\s*(\d+)", part)}
+            tiers = dict(sorted(tiers.items(), key=lambda kv: -kv[1]))
+        parts = {}
+        for d in dims:
+            parts.setdefault(d["part"], {})[d["name"]] = d["weight"]
         tracks.append({"number": num, "name": name, "status": status.group(1) if status else "",
-                       "weights": weights, "tiers": dict(sorted(tiers.items(), key=lambda kv: -kv[1]))})
+                       "rubric_status": rstatus.group(1).strip() if rstatus else "",
+                       "mode": mode, "dims": dims, "parts": parts,
+                       "weights": {d["name"]: d["weight"] for d in dims}, "tiers": tiers})
     return tracks
+
+
+def compute(track, dim_scores):
+    """Weighted score(s) and tier from {dimension: 1-5}. Two-part rubrics give a 'get' and a
+    'want' score (each 0-100); the overall score is their average and a tier needs both."""
+    if track["mode"] == "two":
+        sub = {part: half_up(sum(dim_scores[d] / 5 * w for d, w in ws.items()))
+               for part, ws in track["parts"].items() if part in ("get", "want")}
+        get, want = sub.get("get", 0), sub.get("want", 0)
+        tier = next((t for t, (g, w) in track["tiers"].items() if get >= g and want >= w), None)
+        if tier is None:
+            tier = next((t for t in sorted(set("ABC") | set(track["tiers"])) if t not in track["tiers"]), "C")
+        return {"score": half_up((get + want) / 2), "get": get, "want": want, "tier": tier}
+    total = half_up(sum(dim_scores[d] / 5 * w for d, w in track["weights"].items()))
+    return {"score": total, "get": None, "want": None, "tier": tier_for(total, track["tiers"])}
 
 
 def find_track(tracks, wanted):
@@ -178,8 +226,10 @@ def score(ws, req):
     problems = []
     if not weights:
         raise Fail(f"track '{track['name']}' has no rubric weights in profile.md")
-    if abs(sum(weights.values()) - 100) > 0.01:
-        problems.append(f"rubric weights add up to {sum(weights.values()):g}, not 100")
+    for part, ws_ in track["parts"].items():
+        if abs(sum(ws_.values()) - 100) > 0.01:
+            label = {"get": "'Can I get it?' ", "want": "'Do I want it?' "}.get(part, "")
+            problems.append(f"{label}rubric weights add up to {sum(ws_.values()):g}, not 100")
 
     jd_norm = None
     if req.get("jd_file"):
@@ -189,7 +239,8 @@ def score(ws, req):
         jd_norm = norm_text(jd_path.read_text(encoding="utf-8", errors="replace"))
 
     given = {k.lower().strip(): v for k, v in (req.get("dimensions") or {}).items()}
-    rows, total = [], 0.0
+    rows = []
+    part_of = {d["name"]: d["part"] for d in track["dims"]}
     for dim, weight in weights.items():
         d = given.pop(dim.lower(), None)
         if d is None:
@@ -198,19 +249,19 @@ def score(ws, req):
         if not isinstance(s, (int, float)) or not 1 <= s <= 5 or (s * 2) % 1:
             raise Fail(f"score for '{dim}' must be 1-5 (halves allowed), got {s!r}")
         pts = s / 5 * weight
-        total += pts
         evidence = check_quote(d.get("quote") if isinstance(d, dict) else "", jd_norm)
-        rows.append({"dimension": dim, "weight": weight, "score": s, "points": round(pts, 1), "evidence": evidence})
+        rows.append({"dimension": dim, "part": part_of.get(dim, "single"), "weight": weight, "score": s,
+                     "points": round(pts, 1), "evidence": evidence})
     if given:
         problems.append(f"ignored dimensions not in the rubric: {sorted(given)}")
 
-    total = half_up(total)
-    tier = tier_for(total, tiers)
+    res = compute(track, {r["dimension"]: r["score"] for r in rows})
+    total, tier = res["score"], res["tier"]
     gaps = check_gaps(req.get("gaps") or [], {r["dimension"]: r["score"] for r in rows})
 
     weak = [r["dimension"] for r in rows if r["evidence"] != "verified"]
     invented = [r["dimension"] for r in rows if r["evidence"] == "not in job ad"]
-    weak_weight = sum(r["weight"] for r in rows if r["evidence"] != "verified")
+    weak_weight = sum(r["weight"] for r in rows if r["evidence"] != "verified") / max(1, len(track["parts"]))
     confidence = "low" if invented or weak_weight > 30 else ("medium" if weak else "high")
     if invented:
         problems.append("these quotes are not in the saved job ad; recheck them before showing the "
@@ -218,8 +269,15 @@ def score(ws, req):
     if jd_norm is None:
         problems.append("no jd_file given, so evidence could not be checked; save the job ad to jds/")
 
-    near = [f"{total} is within 3 points of the Tier {t} cut-off ({c})" for t, c in tiers.items() if abs(total - c) <= 3]
-    result = {"track": track["name"], "score": total, "tier": tier, "confidence": confidence,
+    if track["mode"] == "two":
+        near = [f"{lbl} {v} is within 3 points of Tier {t}'s {lbl.lower()} cut-off ({c})"
+                for t, (g, w) in tiers.items() for lbl, v, c in (("Get", res["get"], g), ("Want", res["want"], w))
+                if abs(v - c) <= 3]
+    else:
+        near = [f"{total} is within 3 points of the Tier {t} cut-off ({c})" for t, c in tiers.items() if abs(total - c) <= 3]
+    draft = track["rubric_status"].upper().startswith("DRAFT")
+    result = {"track": track["name"], "score": total, "get": res["get"], "want": res["want"], "tier": tier,
+              "draft": draft, "confidence": confidence,
               "dimensions": rows, "gaps": gaps, "unverified": weak, "near_cutoff": near, "problems": problems}
 
     # Keep the breakdown next to the job ad, so 'gaps' can re-score roles later. Not saved while
@@ -228,7 +286,7 @@ def score(ws, req):
         saved = jd_path.with_name(jd_path.stem + ".score.json")
         saved.write_text(json.dumps({
             "company": req.get("company") or "", "role": req.get("role") or "", "track": track["name"],
-            "scored_on": today().isoformat(), "score": total, "tier": tier,
+            "scored_on": today().isoformat(), "score": total, "get": res["get"], "want": res["want"], "tier": tier,
             "dimensions": {r["dimension"]: r["score"] for r in rows}, "gaps": gaps}, indent=1, ensure_ascii=False),
             encoding="utf-8")
         result["saved"] = saved.relative_to(ws.resolve()).as_posix()
@@ -259,6 +317,155 @@ def check_gaps(gaps, dim_scores):
             raise Fail(f"gap '{g['skill']}': score_if_closed must be above the current {dim_scores[dim]} and at most 5")
         clean.append({"skill": str(g["skill"]).strip(), "dimension": dim, "score_if_closed": to})
     return clean
+
+
+# ---------- rubric quality ----------
+
+VAGUE = re.compile(r"^(?:very |really |quite )?(?:great|good|ok|okay|fine|bad|poor|strong|weak|excellent|"
+                   r"perfect|ideal|average|decent|some|none|low|high|medium|match|fit|n/?a|-)"
+                   r"(?: (?:match|fit|role|job|level))?\.?$", re.I)
+STOP = {"and", "or", "the", "a", "of", "to", "in", "for", "fit", "match", "&", "/", "-"}
+FILTER_WORDS = {"location": "location", "remote": "location", "commute": "location", "hybrid": "location",
+                "salary": "salary", "pay": "salary", "contract": "contract", "visa": "visa", "sponsorship": "visa"}
+
+
+def rubric_check(ws, track_name=None):
+    """Mechanical checks on each track's rubric. 'problems' must be fixed before the rubric is used;
+    'warnings' make it weaker. Judgement (are these the right dimensions?) stays with Claude."""
+    text = (ws / "profile.md").read_text(encoding="utf-8")
+    tracks = parse_tracks(text)
+    if track_name:
+        tracks = [find_track(tracks, track_name)]
+    shared = text.split("## Track")[0].lower()
+    out = []
+    for t in tracks:
+        problems, warnings = [], []
+        if not t["dims"]:
+            problems.append("no rubric table yet")
+        if t["mode"] == "single" and t["dims"]:
+            warnings.append("older one-score rubric: rebuild it as 'Can I get it?' and 'Do I want it?' for "
+                            "sharper tiers")
+        for part, label in (("get", "Can I get it?"), ("want", "Do I want it?"), ("single", "Rubric")):
+            ws_ = t["parts"].get(part)
+            if ws_ is None:
+                if t["mode"] == "two" and part != "single":
+                    problems.append(f"'{label}' has no dimensions")
+                continue
+            n = len(ws_)
+            if t["mode"] == "two" and not 2 <= n <= 4:
+                problems.append(f"'{label}' has {n} dimensions; use 2 to 4")
+            if t["mode"] == "single" and not 4 <= n <= 6:
+                warnings.append(f"{n} dimensions; 4 to 6 work best")
+            if abs(sum(ws_.values()) - 100) > 0.01:
+                problems.append(f"'{label}' weights add up to {sum(ws_.values()):g}, not 100")
+            for d, w in ws_.items():
+                if w < 5 or w > 60:
+                    warnings.append(f"'{d}' weighs {w:g}: below 5 it barely counts, above 60 it decides alone")
+        names = [d["name"] for d in t["dims"]]
+        for d in t["dims"]:
+            for k, label in (("a5", "5"), ("a3", "3"), ("a1", "1")):
+                a = d[k].strip()
+                if not a:
+                    problems.append(f"'{d['name']}' has no '{label} looks like' description")
+                elif VAGUE.match(a) or len(a.split()) < 4:
+                    warnings.append(f"'{d['name']}' {label}: \"{a}\" is vague; say what you'd see in a job ad")
+            if d["a5"] and d["a5"].strip().lower() in (d["a3"].strip().lower(), d["a1"].strip().lower()):
+                problems.append(f"'{d['name']}' uses the same description for different scores")
+            if d["part"] == "get" and not re.search(r"\d+\s*/\s*\d+", d["seen"]):
+                warnings.append(f"'{d['name']}' isn't grounded in real ads yet (no 'Seen in' count like 14/20)")
+            hit = {FILTER_WORDS[w] for w in re.findall(r"[a-z]+", d["name"].lower()) if w in FILTER_WORDS}
+            for kind in hit:
+                if any(w in shared for w, k in FILTER_WORDS.items() if k == kind):
+                    warnings.append(f"'{d['name']}' overlaps a deal-breaker about {kind}: score only what's beyond "
+                                    "the deal-breaker (e.g. hybrid days), or it gets counted twice")
+        for i, a in enumerate(names):
+            wa = {w for w in re.findall(r"[a-z]+", a.lower())} - STOP
+            for b in names[i + 1:]:
+                wb = {w for w in re.findall(r"[a-z]+", b.lower())} - STOP
+                if wa and wb and len(wa & wb) / len(wa | wb) >= 0.5:
+                    warnings.append(f"'{a}' and '{b}' look like the same thing; merge or sharpen them")
+        if t["mode"] == "two":
+            if not {"A", "B"} <= set(t["tiers"]):
+                problems.append("tiers need 'Tier A: Get NN+ and Want NN+' and the same for Tier B")
+            elif not all(a >= b for a, b in zip(t["tiers"]["A"], t["tiers"]["B"])):
+                problems.append("Tier A's cut-offs must be at least Tier B's")
+        elif not t["tiers"]:
+            problems.append("no tier cut-offs")
+        out.append({"track": t["name"], "mode": t["mode"], "rubric_status": t["rubric_status"] or "not set",
+                    "problems": problems, "warnings": warnings, "ok": not problems})
+    return out
+
+
+def market_counts(ws, terms):
+    """How many saved market ads (jds/market/*.txt) mention each requirement. 'a/b' counts either."""
+    files = sorted((ws / "jds" / "market").glob("*.txt")) if (ws / "jds" / "market").is_dir() else []
+    if not files:
+        raise Fail("no market ads saved yet: save 15-25 current ads as jds/market/<Company - Role>.txt")
+    texts = [norm_text(f.read_text(encoding="utf-8", errors="replace")) for f in files]
+    rows = []
+    for term in [t.strip() for t in terms.split(",") if t.strip()]:
+        alts = [norm_text(a) for a in term.split("/") if a.strip()]
+        pats = [re.compile(r"(?<![\w])" + re.escape(a) + r"(?![\w])") for a in alts]
+        n = sum(1 for tx in texts if any(p.search(tx) for p in pats))
+        rows.append({"term": term, "ads": n, "seen_in": f"{n}/{len(texts)}"})
+    return {"ads": len(texts), "terms": sorted(rows, key=lambda r: -r["ads"])}
+
+
+VERDICT_TIER = {"great": "A", "okay": "B", "ok": "B", "no": None}
+
+
+def calibrate(ws, items, track_name=None, apply=False):
+    """Compare the user's verdicts on scored roles (great / okay / no) with the rubric's tiers.
+    Passes at 8+ roles with at least 7 in 8 agreeing; with apply, marks the rubric CALIBRATED."""
+    text = (ws / "profile.md").read_text(encoding="utf-8")
+    track = find_track(parse_tracks(text), track_name)
+    files = {}
+    for p in (ws / "jds").glob("*.score.json") if (ws / "jds").is_dir() else []:
+        try:
+            d = json.loads(p.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            continue
+        files[key(d.get("company"), d.get("role"))] = d
+    agree, rows, missing = 0, [], []
+    for it in items:
+        verdict = str(it.get("verdict", "")).lower().strip()
+        if verdict not in VERDICT_TIER:
+            raise Fail(f"verdict must be great, okay or no: {it}")
+        d = files.get(key(it.get("company"), it.get("role")))
+        if not d or set(map(str.lower, track["weights"])) != set(map(str.lower, d.get("dimensions", {}))):
+            missing.append(f"{it.get('company')}, {it.get('role')}")
+            continue
+        dims = {n: d["dimensions"][next(k for k in d["dimensions"] if k.lower() == n.lower())] for n in track["weights"]}
+        got = compute(track, dims)
+        want_tier = VERDICT_TIER[verdict]
+        ok = got["tier"] == want_tier if want_tier else got["tier"] not in ("A", "B")
+        agree += ok
+        if not ok:
+            low = sorted(dims.items(), key=lambda kv: kv[1])[:2]
+            high = sorted(dims.items(), key=lambda kv: -kv[1])[:2]
+            rows.append({"role": f"{d.get('company')}, {d.get('role')}", "you_said": verdict,
+                         "rubric_gave": got["tier"], "get": got["get"], "want": got["want"], "score": got["score"],
+                         "lowest": dict(low), "highest": dict(high)})
+    total = agree + len(rows)
+    need = -(-total * 7 // 8)  # ceil(7/8 of total)
+    passed = total >= 8 and agree >= need
+    result = {"track": track["name"], "rated": total, "agree": agree, "needed": max(need, 7) if total < 8 else need,
+              "passed": passed, "disagreements": rows, "not_scored": missing}
+    if total < 8:
+        result["note"] = f"rate at least 8 scored roles (have {total})"
+    if passed and apply:
+        stamp = f"- Rubric status: CALIBRATED ({agree}/{total} agreed, {today().isoformat()})"
+        sections = re.split(r"(?=^## )", text, flags=re.M)
+        for i, sec in enumerate(sections):
+            if sec.startswith("## Track") and parse_tracks(sec)[0]["name"] == track["name"]:
+                if re.search(r"^- Rubric status:.*$", sec, re.M):
+                    sec = re.sub(r"^- Rubric status:.*$", stamp, sec, count=1, flags=re.M)
+                else:
+                    sec = re.sub(r"^(### Rubric[^\n]*\n)", r"\1" + stamp + "\n", sec, count=1, flags=re.M)
+                sections[i] = sec
+        (ws / "profile.md").write_text("".join(sections), encoding="utf-8")
+        result["profile_updated"] = True
+    return result
 
 
 # ---------- gap economics ----------
@@ -303,10 +510,10 @@ def gap_report(ws, track_name=None):
             skipped.append(f"{p.name}: rubric changed since it was scored; re-score it to include it")
             continue
         dims = {d: s["dimensions"][next(k for k in s["dimensions"] if k.lower() == d.lower())] for d in t["weights"]}
-        base = half_up(sum(v / 5 * t["weights"][d] for d, v in dims.items()))
+        base = compute(t, dims)
         info = (tracker or {}).get(key(s.get("company"), s.get("role")), {})
-        roles.append({"company": s.get("company"), "role": s.get("role"), "track": t["name"], "tiers": t["tiers"],
-                      "weights": t["weights"], "dims": dims, "score": base, "tier": tier_for(base, t["tiers"]),
+        roles.append({"company": s.get("company"), "role": s.get("role"), "track": t, "dims": dims,
+                      "score": base["score"], "tier": base["tier"],
                       "status": info.get("status", ""), "gaps": s.get("gaps") or []})
 
     skills = {}
@@ -322,9 +529,9 @@ def gap_report(ws, track_name=None):
             e["rejected_roles"] += r["status"].lower() == "rejected"
             dims = dict(r["dims"])
             dims[g["dimension"]] = max(dims[g["dimension"]], g["score_if_closed"])
-            new = half_up(sum(v / 5 * r["weights"][d] for d, v in dims.items()))
+            after = compute(r["track"], dims)
+            new, new_tier = after["score"], after["tier"]
             e["points"].append(new - r["score"])
-            new_tier = tier_for(new, r["tiers"])
             if new_tier != r["tier"] and is_open:
                 e["upgrades"].append(f"{r['company']}, {r['role']}: {r['score']} {r['tier']} -> {new} {new_tier}")
 
@@ -506,8 +713,9 @@ def dashboard_person(ws):
     first = m.group(1).strip().split()[0] if m else ""
     if not re.fullmatch(r"[^\W\d_][\w'-]{0,40}", first or "-"):
         first = ""
-    tracks = [t["name"] for t in parse_tracks(text) if t["status"].upper() != "PAUSED" and t["name"] and "<" not in t["name"]]
-    return {"name": first, "tracks": tracks}
+    active = [t for t in parse_tracks(text) if t["status"].upper() != "PAUSED" and t["name"] and "<" not in t["name"]]
+    draft = any(t["rubric_status"].upper().startswith("DRAFT") for t in active)
+    return {"name": first, "tracks": [t["name"] for t in active], "draft": draft}
 
 
 SNAPSHOT_LIMIT = 240_000  # the artifact store holds documents up to 256 KiB
@@ -604,7 +812,36 @@ def migrate_0_to_1(ws, done):
     done.append(f"tracker: Applied?/Callback? formulas on rows 2-{MAX_ROW}")
 
 
-MIGRATIONS = {0: migrate_0_to_1}
+def migrate_1_to_2(ws, done):
+    """v1 -> v2 (Job Buddy 0.7): two-part rubrics ('Can I get it?' / 'Do I want it?') and the
+    tracker columns that hold their scores. Existing one-score rubrics keep working."""
+    p = ws / "profile.md"
+    p.write_text(re.sub(r"^Workspace version:.*$", "Workspace version: 2", p.read_text(encoding="utf-8"),
+                        count=1, flags=re.M), encoding="utf-8")
+    done.append("profile.md: Workspace version 2")
+    try:
+        wb, sheet, cols, path = load_tracker(ws)
+    except Fail as e:
+        if e.code != 4:
+            raise
+        done.append("tracker columns skipped (openpyxl not installed)")
+        return
+    added = []
+    for letter, name in (("W", "Get Score"), ("X", "Want Score")):
+        if name not in cols:
+            if sheet[f"{letter}1"].value not in (None, ""):
+                raise Fail(f"tracker column {letter} is already used by '{sheet[f'{letter}1'].value}'")
+            sheet[f"{letter}1"] = name
+            sheet[f"{letter}1"]._style = sheet["V1"]._style
+            added.append(name)
+    if added:
+        save_tracker(wb, path)
+        done.append(f"tracker: added {', '.join(added)} columns")
+    done.append("your current rubric still works; ask Job Buddy to rebuild it as 'Can I get it?' and "
+                "'Do I want it?' when you're ready")
+
+
+MIGRATIONS = {0: migrate_0_to_1, 1: migrate_1_to_2}
 
 
 def migrate(ws):
@@ -635,8 +872,19 @@ def main(argv):
     elif cmd == "migrate":
         out(migrate(ws))
     elif cmd == "rubric":
-        tracks = parse_tracks((ws / "profile.md").read_text(encoding="utf-8"))
-        out([find_track(tracks, rest[1])] if rest[:1] == ["--track"] and len(rest) > 1 else tracks)
+        track = rest[rest.index("--track") + 1] if "--track" in rest[:-1] else None
+        if "--check" in rest:
+            out(rubric_check(ws, track))
+        else:
+            tracks = parse_tracks((ws / "profile.md").read_text(encoding="utf-8"))
+            out([find_track(tracks, track)] if track else tracks)
+    elif cmd == "market":
+        if "--terms" not in rest[:-1]:
+            raise Fail("usage: jb.py market WORKSPACE --terms \"Salesforce/SFDC, forecasting, Python\"")
+        out(market_counts(ws, rest[rest.index("--terms") + 1]))
+    elif cmd == "calibrate":
+        track = rest[rest.index("--track") + 1] if "--track" in rest[:-1] else None
+        out(calibrate(ws, read_stdin_json(), track, apply="--apply" in rest))
     elif cmd == "score":
         out(score(ws, read_stdin_json()))
     elif cmd == "gaps":

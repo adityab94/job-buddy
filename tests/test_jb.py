@@ -56,6 +56,32 @@ Weights add up to 100. Each dimension is scored 1-5 using the anchors.
 - Tier A: 80+
 """
 
+TRACK2 = """## Track 1: Revenue Operations
+- Status: ACTIVE
+- Master CV: cv/sam.pdf
+
+### Rubric
+- Rubric status: DRAFT
+
+#### Can I get it?
+| Dimension | Weight | 5 looks like | 3 looks like | 1 looks like | Seen in |
+|---|---|---|---|---|---|
+| Core RevOps work | 50 | Owns routing, forecasting and CRM end to end | Part of the job sits in sales ops | Mostly reporting or data entry | 18/20 |
+| Tools asked for | 30 | Salesforce and HubSpot are both named as core | One of the two is named | Neither is mentioned anywhere | 15/20 |
+| Seniority asked for | 20 | Asks for 4 to 7 years in RevOps | Asks for 2 to 3 years or 8 plus | Graduate role or Director level | 20/20 |
+
+#### Do I want it?
+| Dimension | Weight | 5 looks like | 3 looks like | 1 looks like |
+|---|---|---|---|---|
+| AI and automation work | 60 | Building AI agents or automations is in scope | Automation is mentioned as nice to have | No automation or AI at all |
+| Hybrid days | 40 | Two office days or fewer in Dublin | Three office days in Dublin | Four or more office days |
+
+### Tiers
+- Tier A: Get 70+ and Want 70+ (great match)
+- Tier B: Get 55+ and Want 55+ (good match)
+- Tier C: anything else
+"""
+
 JD = """Revenue Operations Manager, Tessel (Dublin, hybrid 2 days a week).
 You will own Salesforce and HubSpot, lead routing and forecasting, build automations with
 Zapier and Workato, and pilot AI agents for lead qualification. 5+ years in RevOps."""
@@ -69,7 +95,7 @@ def make_ws(version=True):
     text = text.replace("## Track 1: <name>", "## Track 0: placeholder", 1)
     text = text.split("## Track 0: placeholder")[0] + TRACK + "\n## Change log\n"
     if not version:
-        text = text.replace("Workspace version: 1\n", "")
+        text = text.replace("Workspace version: 2\n", "")
     (ws / "profile.md").write_text(text, encoding="utf-8")
     (ws / "jds" / "tessel.txt").write_text(JD, encoding="utf-8")
     return ws
@@ -264,6 +290,122 @@ class Gaps(unittest.TestCase):
         self.assertIn("Python", out["known_skill_names"])
 
 
+def make_ws2():
+    ws = make_ws()
+    text = (ws / "profile.md").read_text()
+    (ws / "profile.md").write_text(text.split("## Track 1: Revenue Operations")[0] + TRACK2 + "\n## Change log\n")
+    return ws
+
+
+DIMS2 = {"Core RevOps work": "lead routing and forecasting", "Tools asked for": "Salesforce and HubSpot",
+         "Seniority asked for": "5+ years in RevOps", "AI and automation work": "pilot AI agents for lead qualification",
+         "Hybrid days": "Dublin, hybrid 2 days a week"}
+
+
+def dims2(*scores):
+    return {k: {"score": s, "quote": DIMS2[k]} for k, s in zip(DIMS2, scores)}
+
+
+class TwoPartRubric(unittest.TestCase):
+    def setUp(self):
+        self.ws = make_ws2()
+
+    def test_parse(self):
+        t = jb.parse_tracks((self.ws / "profile.md").read_text())[0]
+        self.assertEqual(t["mode"], "two")
+        self.assertEqual(set(t["parts"]), {"get", "want"})
+        self.assertEqual(t["tiers"], {"A": (70, 70), "B": (55, 55)})
+        self.assertEqual(t["rubric_status"], "DRAFT")
+        self.assertEqual(t["dims"][0]["seen"], "18/20")
+
+    def test_tier_needs_both(self):
+        # get = 50+30+20 = 100; want = 12+8 = 20 -> overall 60 but not A or B
+        r = jb.score(self.ws, {"jd_file": "jds/tessel.txt", "dimensions": dims2(5, 5, 5, 1, 1)})
+        self.assertEqual((r["get"], r["want"], r["score"], r["tier"]), (100, 20, 60, "C"))
+        self.assertTrue(r["draft"])
+        r = jb.score(self.ws, {"jd_file": "jds/tessel.txt", "dimensions": dims2(4, 4, 4, 4, 4)})
+        self.assertEqual((r["get"], r["want"], r["tier"]), (80, 80, "A"))
+        r = jb.score(self.ws, {"jd_file": "jds/tessel.txt", "dimensions": dims2(3, 3, 3, 5, 4)})
+        self.assertEqual((r["get"], r["want"], r["tier"]), (60, 92, "B"))
+
+    def test_quality_check_passes_good_rubric(self):
+        r = jb.rubric_check(self.ws)[0]
+        self.assertEqual(r["problems"], [])
+        self.assertTrue(r["ok"])
+        # the only warning is the reminder that 'Hybrid days' sits next to the location deal-breaker
+        self.assertEqual([w for w in r["warnings"] if "deal-breaker about location" not in w], [])
+
+    def test_quality_check_catches_weak_rubric(self):
+        p = self.ws / "profile.md"
+        bad = (p.read_text().replace("| Core RevOps work | 50 | Owns routing, forecasting and CRM end to end",
+                                     "| Core RevOps work | 50 | Great match")
+               .replace("| 18/20 |", "|  |").replace("| Hybrid days | 40 |", "| Hybrid days | 30 |"))
+        p.write_text(bad)
+        r = jb.rubric_check(self.ws)[0]
+        self.assertTrue(any("add up to 90" in x for x in r["problems"]))
+        self.assertTrue(any("vague" in w and "Core RevOps work" in w for w in r["warnings"]))
+        self.assertTrue(any("isn't grounded" in w for w in r["warnings"]))
+        self.assertFalse(r["ok"])
+
+    def test_legacy_rubric_is_flagged_not_broken(self):
+        ws = make_ws()
+        r = jb.rubric_check(ws)[0]
+        self.assertTrue(any("older one-score rubric" in w for w in r["warnings"]))
+        self.assertEqual(jb.score(ws, {"jd_file": "jds/tessel.txt", "dimensions": dims()})["score"], 88)
+
+    def test_market_counts(self):
+        m = self.ws / "jds" / "market"
+        m.mkdir()
+        (m / "a.txt").write_text("We use Salesforce (SFDC) daily. Forecasting is key.")
+        (m / "b.txt").write_text("HubSpot admin; sfdc a plus")
+        (m / "c.txt").write_text("Python and dbt")
+        r = jb.market_counts(self.ws, "Salesforce/SFDC, forecasting, Python, Marketo")
+        got = {t["term"]: t["seen_in"] for t in r["terms"]}
+        self.assertEqual(got, {"Salesforce/SFDC": "2/3", "forecasting": "1/3", "Python": "1/3", "Marketo": "0/3"})
+
+    def _score_roles(self, n_good, n_mid, n_bad):
+        roles = []
+        for i in range(n_good):
+            roles.append((f"Good{i}", (5, 4, 4, 4, 4), "great"))
+        for i in range(n_mid):
+            roles.append((f"Mid{i}", (3, 3, 4, 3, 4), "okay"))
+        for i in range(n_bad):
+            roles.append((f"Bad{i}", (2, 2, 2, 1, 1), "no"))
+        for c, sc, _ in roles:
+            (self.ws / "jds" / f"{c} - Ops.txt").write_text(JD)
+            jb.score(self.ws, {"company": c, "role": "Ops", "jd_file": f"jds/{c} - Ops.txt", "dimensions": dims2(*sc)})
+        return [{"company": c, "role": "Ops", "verdict": v} for c, _, v in roles]
+
+    def test_calibration_passes_and_marks_profile(self):
+        items = self._score_roles(3, 3, 2)
+        r = jb.calibrate(self.ws, items, apply=True)
+        self.assertEqual((r["rated"], r["agree"], r["passed"]), (8, 8, True))
+        self.assertIn("Rubric status: CALIBRATED (8/8 agreed", (self.ws / "profile.md").read_text())
+        self.assertFalse(jb.parse_tracks((self.ws / "profile.md").read_text())[0]["rubric_status"].startswith("DRAFT"))
+
+    def test_calibration_fails_with_two_disagreements(self):
+        items = self._score_roles(3, 3, 2)
+        items[0]["verdict"] = "no"
+        items[1]["verdict"] = "okay"
+        r = jb.calibrate(self.ws, items, apply=True)
+        self.assertEqual((r["agree"], r["passed"]), (6, False))
+        self.assertEqual(len(r["disagreements"]), 2)
+        self.assertIn("Rubric status: DRAFT", (self.ws / "profile.md").read_text())
+
+    def test_calibration_needs_eight(self):
+        r = jb.calibrate(self.ws, self._score_roles(2, 2, 1))
+        self.assertFalse(r["passed"])
+        self.assertIn("at least 8", r["note"])
+
+    def test_gap_report_with_two_parts(self):
+        (self.ws / "jds" / "W - Eng.txt").write_text(JD)
+        jb.score(self.ws, {"company": "W", "role": "Eng", "jd_file": "jds/W - Eng.txt", "dimensions": dims2(4, 2, 4, 4, 4),
+                           "gaps": [{"skill": "Salesforce", "dimension": "Tools asked for", "score_if_closed": 5}]})
+        top = jb.gap_report(self.ws)["skills"][0]
+        # get 40+12+16=68 (B) -> 40+30+16=86 (A); want 80
+        self.assertEqual(top["tier_upgrades"], ["W, Eng: 74 B -> 83 A"])
+
+
 class Seen(unittest.TestCase):
     def test_add_and_check(self):
         ws = make_ws()
@@ -370,7 +512,7 @@ class Dashboard(unittest.TestCase):
     def test_greeting_uses_first_name_and_active_tracks_only(self):
         p = self.ws / "profile.md"
         p.write_text(p.read_text().replace("- Name:", "- Name: Sam Doyle", 1))
-        self.assertEqual(jb.dashboard_person(self.ws), {"name": "Sam", "tracks": ["Revenue Operations"]})
+        self.assertEqual(jb.dashboard_person(self.ws), {"name": "Sam", "tracks": ["Revenue Operations"], "draft": False})
         jb.tracker_upsert(self.ws, {"Company": "Tessel", "Role": "RevOps Manager"})
         snap = json.loads((self.ws / "dashboard-data.json").read_text())
         self.assertEqual(snap["person"]["name"], "Sam")
@@ -395,19 +537,34 @@ class Migrate(unittest.TestCase):
         shutil.rmtree(ws / "jds")
         self.assertTrue(jb.check(ws)["needs_migration"])
         r = jb.migrate(ws)
-        self.assertEqual((r["from"], r["to"]), (0, 1))
+        self.assertEqual((r["from"], r["to"]), (0, 2))
         self.assertEqual(len(r["backups"]), 2)
         for b in r["backups"]:
             self.assertTrue((ws / b).is_file())
-        self.assertEqual(jb.workspace_version((ws / "profile.md").read_text()), 1)
+        self.assertEqual(jb.workspace_version((ws / "profile.md").read_text()), 2)
         self.assertTrue((ws / "jds").is_dir())
-        self.assertIn("Status: NOT SET UP\nWorkspace version: 1", (ws / "profile.md").read_text())
+        self.assertIn("Status: NOT SET UP\nWorkspace version: 2", (ws / "profile.md").read_text())
         self.assertEqual(jb.migrate(ws)["changes"], ["already up to date"])
+
+    @unittest.skipUnless(HAS_XL, "openpyxl not installed")
+    def test_v1_to_v2_adds_score_columns(self):
+        import openpyxl
+        ws = make_ws()
+        p = ws / "profile.md"
+        p.write_text(p.read_text().replace("Workspace version: 2", "Workspace version: 1"))
+        wb = openpyxl.load_workbook(ws / "tracker.xlsx")
+        wb["Applications"]["W1"], wb["Applications"]["X1"] = None, None
+        wb.save(ws / "tracker.xlsx")
+        r = jb.migrate(ws)
+        self.assertEqual((r["from"], r["to"]), (1, 2))
+        heads = [c.value for c in openpyxl.load_workbook(ws / "tracker.xlsx")["Applications"][1]]
+        self.assertEqual(heads[-2:], ["Get Score", "Want Score"])
+        jb.tracker_upsert(ws, {"Company": "Tessel", "Role": "RevOps Manager", "Get Score": 82, "Want Score": 74})
 
     def test_refuses_newer_workspace(self):
         ws = make_ws()
         p = ws / "profile.md"
-        p.write_text(p.read_text().replace("Workspace version: 1", "Workspace version: 99"))
+        p.write_text(p.read_text().replace("Workspace version: 2", "Workspace version: 99"))
         with self.assertRaises(jb.Fail):
             jb.migrate(ws)
 

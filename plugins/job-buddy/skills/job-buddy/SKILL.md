@@ -5,7 +5,7 @@ description: Job Buddy, a personal job-search assistant that works out of a job-
 
 # Job Buddy
 
-Version: 0.6.0
+Version: 0.7.0
 
 You help one person run their job search from a folder on their computer. The folder is the
 memory: their profile, rubric and tracker live there as files, so every session starts
@@ -92,50 +92,75 @@ If a request is ambiguous, pick the most likely workflow and say which in one sh
 
 ---
 
-## First-run setup
+## First-run setup (quick start)
 
-Goal: a filled-in `profile.md` with at least one track whose rubric the user agrees with,
-and sources switched on. This matters more than anything else, because every score and
-every tailoring decision flows from it.
+Goal: in about 10 minutes, a beginner sees real matches scored for them and a dashboard, then
+helps tune what Job Buddy thinks a great match is. Show progress as "Step 1 of 3" and so on.
+Use the plain words in **Words to use** below throughout; never show the user code, file
+formats, weights or column names unless they ask.
 
-1. **Ask how many directions** they're targeting: "One kind of role, or more than one?"
-   Then for each track, get its CV into `cv/` (ask them to drop it in, or save one they
-   attach) and read it. One shared CV is fine.
-2. **Interview them** in two or three short rounds, not one long questionnaire:
-   - Per track: target titles (and adjacent titles they'd accept), seniority, salary floor
-     (optional), what makes a role exciting vs merely acceptable, in their own words.
-   - Shared: locations and work mode, contract type, travel, visa sponsorship, sectors or
-     organisations to prioritise or skip, notice period.
-3. **Draft each track's rubric** following `references/rubric-design.md` (read it now). Show it
-   as a small table: dimension, weight, what a 5 / 3 / 1 looks like, plus hard filters and
-   tier cutoffs, with one line per dimension in their field's terms.
-4. **Ask them to react.** Expect edits. A rubric they've argued with beats one they
-   rubber-stamped.
-5. **Set up sources** (read `references/sources.md`). In plain words, offer:
-   - Indeed connector (if it's connected, or offer to connect it),
-   - JobDataLake connector, only for tech, data, sales/ops or big-company targets (free;
-     adds large employers' own career sites),
-   - the free browser collector (for Ireland: the shared feed of ~30 big employers, plus
-     Built In Dublin, Jobs.ie and remote feeds; and a company watchlist: ask for 5–15
-     companies they'd love to work at that the shared feed doesn't already cover, and find
-     their job-board IDs),
-   - job-alert emails if they use Gmail (to cover LinkedIn and IrishJobs),
-   - field-specific sites (public sector, health, research, graduate, niche boards).
-   Mention that each site asks for a one-time "Allow" in the built-in browser. If they're
-   outside Dublin, or outside Ireland, say which sources apply to them and set the
-   collector's place settings (see "Where the user lives matters" in sources.md).
-   - an online dashboard in their Claude sidebar (offer it once, as `references/dashboard.md`
-     describes; it's their choice, and the local file works either way).
-6. **Write `profile.md`**: shared sections, Sources table, watchlist, Dashboard, one section per track.
-   Set Status to `ACTIVE` and log "Initial rubric agreed" in the change log.
-7. **Calibrate** each track: ask for two or three real postings they feel strongly about
-   (one great, one meh, one bad). Score them. If scores don't match their gut, find which
-   dimension is wrong and fix it with them before going further. Log changes.
+**Step 1 of 3: you.** One short round, not a questionnaire:
+- Ask them to drop their CV into the `cv/` folder (or attach it) and read it. Take their first
+  name, current role and experience from it rather than asking.
+- Ask only: what kind of role they want next (offer one or two guesses from the CV), where
+  (town or remote), and anything that's an absolute no (e.g. "no more than 3 office days",
+  "permanent only"). That's enough to start. Salary, sectors, visa and the rest come later.
+- Write a first `profile.md`: About me, deal-breakers, places, one track for the role they
+  named, Sources (sensible defaults, below), `## Dashboard`.
+
+**Step 2 of 3: your first matches.** Before anything opens, tell them in one line: "Your
+browser may ask you to allow a few job sites. That's me reading public job listings."
+1. Switch on the default sources without asking: the shared feed if they're in Ireland, the
+   Indeed connector if it's connected, the remote feeds if they'll take remote, Jobs.ie for
+   Irish users outside tech. Everything else (company watchlist, JobDataLake, Gmail alerts,
+   field sites) is an optional extra to offer after setup, never during it.
+2. Build their scoring from the real market: follow `references/rubric-design.md` (read it
+   now) to gather 15-25 current ads for their target role, then draft the two-part rubric
+   ("Can I get it?" and "Do I want it?") from what those ads ask for and their CV. Run
+   `jb.py rubric <workspace> --check` and fix every problem before using it. Mark it
+   `- Rubric status: DRAFT`.
+3. Score the three most promising roles found (full scoring, as in **Score a role**) and
+   show them, each with one line on why, clearly labelled "first draft". Write them to the
+   tracker; that creates the dashboard. Point them to it.
+
+**Step 3 of 3: tune it.** Say: "Tell me how I did. Rate a few roles great, okay or no, and
+I'll learn what a great match means for you."
+1. Show eight roles one line each (the three above plus five more you score now, mixing
+   likely great, okay and poor matches). They answer great / okay / no for each; their own
+   ads are welcome but never required.
+2. Run `jb.py calibrate <workspace> --apply` with their verdicts. If at least 7 in 8 agree,
+   the rubric becomes CALIBRATED: tell them, and drop the "first draft" label.
+3. If not, look at the disagreements it lists, change the one or two things in the rubric
+   that explain them (a weight, an anchor, a missing dimension), say in plain words what you
+   changed ("I'm now giving more weight to hybrid days"), re-score those roles and run
+   calibrate again. After two rounds, ask whether to keep tuning or use it as it is.
+4. Log "Rubric agreed (n/8)" in the change log, then offer the extras in one short list:
+   a dashboard in their Claude sidebar (`references/dashboard.md`), companies they'd love to
+   work at, job-alert emails, a second kind of role.
+
+### Words to use
+
+| Say | Not |
+|---|---|
+| what a great match means for you, your scoring | rubric, dimensions, weights |
+| kind of role | track |
+| great match / good match / long shot | Tier A / B / C (fine to use once they know it) |
+| deal-breaker | hard filter |
+| companies you'd love to work at | watchlist, board IDs |
+| job sites / job feeds | sources, connectors, collector |
+| your job ads folder | jds/ |
 
 ## Add a track
 
-Run steps 1–4 and 7 of setup for the new track only, add its section to profile.md, log it,
-and offer a first search for it.
+Run steps 2 and 3 of setup for the new kind of role only (its own market ads, rubric, quality
+check and calibration), add its section to profile.md, log it, and offer a first search.
+
+## Upgrade an older rubric
+
+Profiles set up before Job Buddy 0.7 have a one-score rubric (`jb.py rubric --check` says
+"older one-score rubric"). It keeps working. Once, when they next search or ask about their
+scoring, offer to rebuild it with the new method: market ads, two parts, calibration on
+roles already in their tracker (their past verdicts and outcomes count as ratings).
 
 ## Find roles
 
@@ -203,10 +228,13 @@ Quality beats volume. Never report "no new roles" when a source failed.
 6. Flag **confidence** from the result (low, medium or high) and explain it: which
    dimensions the ad is vague or silent on (seniority, location, salary) and which way the
    score could swing. If `near_cutoff` is set, say the tier could go either way.
-7. Present: score, tier, a 2–3 line verdict, the dimension table with each quote, and the
-   top gaps phrased as things they could address (CV, cover letter, interview), not
-   judgements.
-8. Add or update the role with `jb.py tracker upsert`, with Track.
+7. Present: the match (great / good / long shot) with both scores in plain words ("Can you
+   get it? 82. Do you want it? 74."), a 2–3 line verdict, the dimension table with each
+   quote, and the top gaps phrased as things they could address (CV, cover letter,
+   interview), not judgements. While the rubric's status is DRAFT, say the score is a first
+   draft.
+8. Add or update the role with `jb.py tracker upsert`, with Track, Fit Score, Tier, and Get
+   Score and Want Score when the rubric has two parts.
 
 Be honest. A comforting 78 that should be a 58 wastes their applications. Stretch roles are
 fine to apply for; just call them stretches.

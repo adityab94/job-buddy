@@ -1,7 +1,7 @@
 # My job search profile
 
 Status: NOT SET UP
-Workspace version: 1
+Workspace version: 2
 (Claude fills this in with you on first use and changes it to ACTIVE.
 You can edit anything here yourself at any time.)
 
@@ -54,16 +54,28 @@ You can edit anything here yourself at any time.)
 - What makes a role exciting (in my words):
 
 ### Rubric
-Weights add up to 100. Each dimension is scored 1-5 using the anchors.
+(How Job Buddy decides what's a great match for you. Built from real job ads and your CV, then
+checked against roles you rate yourself.)
+- Rubric status: DRAFT
+
+#### Can I get it?
+How well your experience matches what employers ask for. Weights add up to 100.
+
+| Dimension | Weight | 5 looks like | 3 looks like | 1 looks like | Seen in |
+|---|---|---|---|---|---|
+| | | | | | |
+
+#### Do I want it?
+How well the role fits what you want. Weights add up to 100.
 
 | Dimension | Weight | 5 looks like | 3 looks like | 1 looks like |
 |---|---|---|---|---|
 | | | | | |
 
 ### Tiers
-- Tier A: 75+  (tailor CV + cover letter, apply)
-- Tier B: 60-74 (worth applying)
-- Tier C: under 60 (stretch, only with a reason)
+- Tier A: Get 70+ and Want 70+ (great match: tailor your CV and cover letter, apply)
+- Tier B: Get 55+ and Want 55+ (good match: worth applying)
+- Tier C: anything else (long shot: only with a reason)
 
 ### Tailoring notes
 - CV length / format notes:

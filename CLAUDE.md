@@ -8,7 +8,7 @@ Context for Claude Code working in this repo. Read this first.
 search from a local folder: it builds a scoring rubric for their field, finds roles, scores them
 0–100 (tiers A/B/C), tailors CVs and cover letters honestly, and keeps an application tracker.
 Audience: job seekers in any field (Ireland/EU default), many non-technical, on Windows or Mac.
-Repo: https://github.com/adityab94/job-buddy · Licence: MIT · Current version: 0.6.0
+Repo: https://github.com/adityab94/job-buddy · Licence: MIT · Current version: 0.7.0
 
 ## Repo layout
 
@@ -32,7 +32,7 @@ feed/                                  shared Ireland feed: build_feed.py + watc
 tests/                                 unit tests for jb.py and the feed (python3 -m unittest discover tests)
 .github/                               check.yml (every push), feed.yml (daily), issue templates
 job-buddy-skill.zip                    skill-only zip for claude.ai upload (rebuild after any skill change)
-README.md, CHANGELOG.md, LICENSE, .gitignore
+README.md, START-HERE.md (beginner guide), CHANGELOG.md, LICENSE, .gitignore
 PRODUCT.md, DESIGN.md                  product truth and the dashboard's design system (impeccable skill);
                                        .impeccable/ holds the surface brief and design.json sidecar
 ```
@@ -90,6 +90,12 @@ Install line: `/plugin install job-buddy --marketplace adityab94/job-buddy`
    read view / write owner); Claude ArtifactData-sets `dashboard/snapshot` from
    `dashboard-data.json` (only displayed columns, no notes) after tracker changes, pinned with
    `if_version`. Procedure in references/dashboard.md. Local file stays the default.
+14. **Two-part, market-grounded, calibrated rubric (v0.7).** "Can I get it?" (from 15-25 market
+   ads in jds/market/, each dimension with a Seen-in count from `jb.py market`) and "Do I want
+   it?" (user priorities), each weights-to-100; tier needs both (A: Get 70+ and Want 70+).
+   `jb.py rubric --check` lints; `jb.py calibrate --apply` needs >= 7/8 agreement on 8+ rated
+   roles to flip `- Rubric status: DRAFT` to CALIBRATED. Legacy one-table rubrics still parse.
+   Setup is a 3-step quick start in plain words (SKILL.md "Words to use"). Workspace v2.
 
 ## Conventions
 

@@ -126,6 +126,7 @@ header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 18
   -webkit-mask: var(--logo) center / contain no-repeat; mask: var(--logo) center / contain no-repeat; }
 .title { border-left: 1px solid var(--glass-line); padding-left: 26px; min-width: 0; }
 h1 { margin: 0; font-size: 28px; line-height: 1.15; font-weight: 680; letter-spacing: -0.02em; }
+.draft { margin: 10px 0 0; padding: 6px 12px; border-radius: 12px; background: var(--wait-bg); color: var(--ink); font-size: 13.5px; max-width: 70ch; width: fit-content; }
 .status { margin: 6px 0 0; color: var(--ink-2); max-width: 70ch; text-wrap: pretty; }
 .tools { display: flex; gap: 10px; align-items: center; }
 .field { display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 14px; border-radius: 999px; }
@@ -271,6 +272,7 @@ BODY = r"""<div class="sky" aria-hidden="true"></div>
   <div class="title">
     <h1 id="hello">Your job search</h1>
     <p class="status" id="status"></p>
+    <p class="draft" id="draft" hidden>Your scoring is a first draft. Rate a few roles great, okay or no and Claude will tune it to you.</p>
   </div>
   <div class="tools">
     <label class="field glass search">
@@ -362,6 +364,7 @@ function greet() {
   const name = (D.person || {}).name, hr = new Date().getHours();
   const part = hr >= 5 && hr < 12 ? 'Good morning' : hr >= 12 && hr < 17 ? 'Good afternoon' : hr >= 17 && hr < 22 ? 'Good evening' : 'Hello';
   document.getElementById('hello').textContent = name ? `${part}, ${name}` : 'Your job search';
+  document.getElementById('draft').hidden = !(D.person || {}).draft || !D.rows.length;
 }
 function searchWeek(R) {
   const tracks = ((D.person || {}).tracks || []).filter(Boolean);

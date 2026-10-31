@@ -5,12 +5,15 @@ role looks like for *you*, finds and scores jobs, tailors your CV and cover lett
 application tracker. It works for any field: tech, health, research, public sector and more.
 Ireland and EU by default, easy to change.
 
-## Install (Cowork or Claude Code)
+**New to this? Read [START-HERE.md](START-HERE.md):** a step-by-step guide that gets you to your
+first matches in about 15 minutes.
 
-**Cowork:** Customize → Plugins → Add marketplace → paste this repo's GitHub URL
-(`adityab94/job-buddy`), then install **job-buddy**.
+## Install
 
-**Claude Code:**
+**Cowork (recommended):** Customize → Plugins → Add marketplace → paste `adityab94/job-buddy`,
+then install **job-buddy**.
+
+**Claude Code (for technical users):**
 ```
 /plugin install job-buddy --marketplace adityab94/job-buddy
 ```

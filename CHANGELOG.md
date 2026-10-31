@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.7.0 (31 Oct 2026)
+
+- **10-minute quick start.** Drop in your CV, say what you want and where, and see your first
+  three matches scored for you, then tune Job Buddy by rating eight jobs great, okay or no.
+  Plain words throughout, sensible job sites switched on for you, progress shown as
+  "Step 1 of 3". New [START-HERE.md](START-HERE.md) guide for beginners.
+- **A much stronger rubric.**
+  - Built from the real market: 15-25 current ads for your role, with every "can I get it"
+    requirement showing how many ads ask for it (`jb.py market`).
+  - Two scores: "Can I get it?" and "Do I want it?". A great match needs both, so a dream job
+    you can't land and an easy job you'd hate no longer look alike.
+  - An automatic quality check (`jb.py rubric --check`): weights, vague descriptions,
+    overlapping parts, deal-breakers counted twice, missing evidence.
+  - Calibration on eight real roles you rate (`jb.py calibrate`): at least 7 in 8 must agree
+    before the scoring is trusted; until then every score is marked "first draft", including
+    on the dashboard.
+- Workspaces upgrade to version 2 automatically (backed up first): the tracker gains Get Score
+  and Want Score columns. Existing one-score rubrics keep working, and Job Buddy offers to
+  rebuild them with the new method.
+
 ## 0.6.0 (31 Oct 2026)
 
 - **Dashboard.** A friendly `dashboard.html` in your folder, designed in The Buddy Social's
