@@ -1,0 +1,27 @@
+# Job Buddy (plugin)
+
+Runs your job search from a folder on your computer. Say **"set me up"** to start.
+
+Install (Claude Code):
+
+```
+/plugin install job-buddy --marketplace <github-owner>/job-buddy-claude
+```
+
+- Builds a scoring rubric for your field, with one or more role **tracks** (each with its own CV)
+- Finds roles: Indeed connector, company job boards on your watchlist, Built In Dublin, Jobs.ie,
+  remote-job feeds, job-alert emails (Gmail) and any link you paste
+- Scores each role 0–100 with reasons (tier A, B or C)
+- Tailors your CV and cover letter for strong matches, honestly
+- Keeps an application tracker and reviews what's working
+
+Free to run: no paid scrapers, no API keys. It never logs in, applies or messages anyone for you.
+See CONNECTORS.md for the optional Indeed and Gmail connectors.
+
+Things to say: "set me up", "find me roles", "is this a good fit? <link>",
+"tailor my CV for <company>", "I heard back from <company>", "how's my search going?",
+"add a track for <role>".
+
+---
+
+Built by **Aditya Bhatnagar (The Buddy Social)**.

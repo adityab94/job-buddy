@@ -1,0 +1,17 @@
+{
+  "name": "job-buddy",
+  "owner": {
+    "name": "Aditya Bhatnagar (The Buddy Social)"
+  },
+  "metadata": {
+    "description": "Job Buddy: a free, privacy-first job-search assistant for Claude, by The Buddy Social."
+  },
+  "plugins": [
+    {
+      "name": "job-buddy",
+      "source": "./plugins/job-buddy",
+      "description": "Score jobs against your own rubric, find roles from Indeed, company job boards and public job sites, tailor your CV, and track applications.",
+      "version": "0.3.0"
+    }
+  ]
+}

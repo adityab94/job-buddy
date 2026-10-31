@@ -1,0 +1,8 @@
+# Never publish personal job-search data
+job-search/
+**/cv/*
+!**/cv/README.txt
+**/outputs/*
+!**/outputs/README.txt
+*.backup-*.md
+.DS_Store

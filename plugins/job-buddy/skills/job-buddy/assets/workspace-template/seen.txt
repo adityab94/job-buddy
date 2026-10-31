@@ -1,0 +1,1 @@
+# Roles screened out before scoring. One per line: company|title|date. Claude keeps this file; entries older than 60 days can be deleted.

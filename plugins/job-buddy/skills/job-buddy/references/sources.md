@@ -1,0 +1,94 @@
+# Where jobs come from
+
+Five ways in. Each person switches on the ones that fit them in profile.md ("Sources").
+The aim is to keep raw listings out of the conversation: filter first, read only what survives.
+
+## 1. Indeed connector (official, optional)
+
+Indeed's own Claude connector: `search_jobs` (search, location, country_code, job_type) and
+`get_job_details` (job_id). No scraping, no blocking.
+
+- One search per target title. Use the profile's place (e.g. "Dublin") and, if remote is
+  accepted, a second search with location "remote". Use `job_type: fulltime` when the profile
+  wants permanent roles.
+- About 10 results per search, ~1k tokens. There is **no date filter**: drop anything older
+  than the profile's recency setting yourself. Exception: a strong title match up to 90 days
+  old may be kept, labelled "older, check it's still open".
+- Job IDs only last for the session. Match duplicates on company + title, never on the ID.
+- `get_company_data` gives salaries and employee ratings: use it for the salary check on
+  Tier A roles with no stated salary, and for interview prep.
+- Indeed's listings also feed Glassdoor, so there is no need to search Glassdoor separately.
+
+## 2. Browser collector (free, built-in browser, Windows and Mac)
+
+`scripts/collector.js`, shipped with this skill. It runs inside the Claude desktop app's built-in
+browser, fetches public feeds, filters them in the page and returns short rows only.
+
+How to run it:
+1. Build CONFIG from profile.md: `include` = the track's target titles (lowercase),
+   `exclude` = the track's exclude words, `places`, `remote`, `days`, `seen` (see below),
+   `companies` (watchlist), `feeds` (remote feeds switched on), `builtin: true/false`.
+   With several tracks, run once per track or merge the include lists and route afterwards.
+2. Open `https://builtindublin.ie/jobs` in the built-in browser (any page on that site works).
+   Paste the contents of `scripts/collector.js` into one javascript call, followed by
+   `await JSA.run(CONFIG)`. This covers the company watchlist, remote feeds and Built In Dublin.
+3. If Jobs.ie is switched on: open `https://www.jobs.ie/`, paste the script again, then
+   `await JSA.jobsie(CONFIG)`.
+4. The result starts with `checked N | kept K | dropped {...}`, then any errors, then one row
+   per kept job: `source | company | title | location | age in days | link`.
+
+First use of each site asks the user to allow it once in the built-in browser.
+
+What the collector reads (all tested Oct 2026):
+
+| Source | How | Notes |
+|---|---|---|
+| Greenhouse, Lever, Ashby, SmartRecruiters, Workable | Official public job-board APIs per company | Stable. Needs the company's board ID |
+| Remotive, RemoteOK | Free remote-job APIs | RemoteOK asks for credit with a link |
+| Arbeitnow | Free EU job API | Mostly Germany; leave off for Ireland unless relevant |
+| Built In Dublin | Public search pages | Tech and startup roles in Dublin |
+| Jobs.ie | Public search pages | Sister site of IrishJobs; strongest for non-tech fields |
+
+Finding a company's board ID: open its careers page and look at where "Apply" links go:
+`boards.greenhouse.io/<id>` or `job-boards.greenhouse.io/<id>`, `jobs.lever.co/<id>`,
+`jobs.ashbyhq.com/<id>`, `jobs.smartrecruiters.com/<id>`, `apply.workable.com/<id>`.
+An error like `404` for a company in the collector output means the ID is wrong or the
+company moved board; tell the user and fix the watchlist.
+
+If a site's layout changes, the collector reports zero listings or an error for it. Say so in
+one line; never report "no new roles" when a source failed.
+
+## 3. Job-alert emails (Gmail connector, optional)
+
+Covers LinkedIn, Indeed, IrishJobs and Glassdoor without scraping. The user sets up free
+alerts on those sites for their titles and location. When the Gmail connector is connected,
+search only alert senders (e.g. `from:(jobalerts-noreply@linkedin.com OR alert@indeed.com
+OR irishjobs.ie) newer_than:7d`), pull title, company, location and link from each email,
+then filter and score like any other row. If there is no Gmail, users can forward or paste
+alert emails.
+
+## 4. Pasted links and text (always on)
+
+Any link or job text the user shares. Open the link; LinkedIn's public job page usually
+works for a single job. If a page is blocked (Indeed or IrishJobs pages, sign-in walls),
+ask the user to paste the job text instead. Never try to get past a security check.
+
+## 5. Field-specific sites
+
+Chosen during setup, read with the built-in browser like any public page:
+publicjobs.ie (Irish public service), HSE and hospital group careers (health),
+EURAXESS (research), gradireland (graduates), EURES (EU-wide), and niche boards the user
+trusts (e.g. RevOps Careers for RevOps). Add new ones to the profile's Sources table.
+
+## Not used
+
+Live LinkedIn search, Indeed or IrishJobs page scraping, and paid scrapers. They break
+site terms, get blocked, or cost money. Alerts, the Indeed connector and pasted links
+cover the same jobs.
+
+## The seen list
+
+`seen.txt` holds roles screened out before scoring (`company|title|date`). Roles in the
+tracker count as seen too. Pass the collector only keys from the last 60 days
+(`company` lowercased with non-letters removed, `|`, title lowercased), so the list stays small.
+Add every quick-score reject to seen.txt so it is never read twice.
