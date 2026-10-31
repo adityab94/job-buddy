@@ -18,8 +18,10 @@
 //   companies: [{n:"Intercom",ats:"greenhouse",s:"intercom"}, ...],
 //   feeds: ["remotive","arbeitnow","remoteok"],                   // optional remote/EU feeds
 //   builtin: true,                                                // search Built In Dublin with each include term
-//   jobsiePlace: "cork"                                           // Jobs.ie town or county (default "dublin")
+//   jobsiePlace: "cork",                                          // Jobs.ie town or county (default "dublin")
+//   feed: true                                                    // shared daily feed of ~30 employers' boards (Ireland)
 // }
+// With feed on, watchlist companies already in the feed are skipped (the feed has them).
 window.JSA = (() => {
   const low = s => (s || '').toLowerCase();
   const key = (c, t) => low(c).replace(/[^a-z0-9]/g, '') + '|' + low(t).replace(/\s+/g, ' ').trim();
@@ -28,7 +30,8 @@ window.JSA = (() => {
     const m = s.match(/(\d+)\s*(day|week|month)/); return m ? +m[1] * ({ day: 1, week: 7, month: 30 })[m[2]] : null; };
 
   function keep(cfg, r) {
-    const t = low(r.t), l = low(r.l);
+    // "Remote - Ireland" often appears only in the title, so an Irish place name there counts as location.
+    const t = low(r.t), l = low(r.l) + (/\b(ireland|irish|dublin|cork|galway|limerick|waterford|belfast)\b/.test(t) ? ' ' + t : '');
     if (!cfg.include.some(w => t.includes(low(w)))) return 'title';
     if ((cfg.exclude || []).some(w => t.includes(low(w)))) return 'excluded';
     const isRemote = /remote|anywhere|worldwide/.test(l) || r.remote;
@@ -63,6 +66,15 @@ window.JSA = (() => {
     remoteok: async () => (await j('https://remoteok.com/api')).filter(p => p.position).map(p =>
       ({ c: p.company, t: p.position, l: 'remote ' + (p.location || 'worldwide'), age: ageDays(p.date), u: p.url, remote: true })),
   };
+  const FEED_URL = 'https://raw.githubusercontent.com/adityab94/job-buddy/feed/ie.json';
+  async function sharedFeed(cfg, errors) {
+    const d = await j(typeof cfg.feed === 'string' ? cfg.feed : FEED_URL);
+    const age = ageDays(d.generated);
+    if (age != null && age > 2) errors.push(`shared feed: ${age} days old (the daily build may be failing)`);
+    return { jobs: d.jobs.map(p => ({ c: p.c, t: p.t, l: p.l, age: ageDays(p.posted), u: p.u })),
+      companies: new Set(Object.keys(d.sources || {}).filter(n => d.sources[n].ok).map(low)) };
+  }
+
   async function builtin(cfg) {
     const out = [];
     for (const q of cfg.include) {
@@ -84,12 +96,14 @@ window.JSA = (() => {
     const stats = {}, rows = [], dup = new Set();
     const per = Object.entries(counts).map(([s, n]) => `${s} ${n}`).join(', ');
     const empty = Object.entries(counts).filter(([s, n]) => n === 0);
-    const broken = empty.filter(([s]) => s in feeds || s === 'builtin' || s === 'jobs.ie').map(([s]) => s);
+    const broken = empty.filter(([s]) => s in feeds || ['builtin', 'jobs.ie', 'shared feed'].includes(s)).map(([s]) => s);
     const quiet = empty.filter(([s]) => !broken.includes(s)).map(([s]) => s);
     for (const r of all) {
       const why = keep(cfg, r); if (why) { stats[why] = (stats[why] || 0) + 1; continue; }
       const k = key(r.c, r.t); if (dup.has(k)) { stats.duplicate = (stats.duplicate || 0) + 1; continue; } dup.add(k);
-      rows.push([r.src, r.c, r.t, (r.l || '').replace(/\s+/g, ' ').slice(0, 60), r.age ?? '?', r.u].join(' | '));
+      // Fields are capped and stripped of '|' so page text can't smuggle long instructions into a row.
+      const f = (s, n) => String(s ?? '').replace(/[|\s]+/g, ' ').trim().slice(0, n);
+      rows.push([r.src, f(r.c, 60), f(r.t, 120), f(r.l, 60), r.age ?? '?', f(r.u, 300)].join(' | '));
     }
     return `checked ${all.length} | kept ${rows.length} | dropped ${JSON.stringify(stats)}` +
       `\nper source: ${per || 'none'}` +
@@ -101,8 +115,13 @@ window.JSA = (() => {
   async function run(cfg) {
     const all = [], errors = [], counts = {};
     const tag = (src, list, name = src) => { counts[name] = list.length; list.forEach(r => { r.src = src; all.push(r); }); };
+    let covered = new Set();
+    if (cfg.feed) {
+      try { const f = await sharedFeed(cfg, errors); tag('feed', f.jobs, 'shared feed'); covered = f.companies; }
+      catch (e) { errors.push('shared feed: ' + e.message); }
+    }
     await Promise.all([
-      ...(cfg.companies || []).map(x => (ats[x.ats] ? ats[x.ats](x) : Promise.reject(new Error('unknown ats')))
+      ...(cfg.companies || []).filter(x => !covered.has(low(x.n))).map(x => (ats[x.ats] ? ats[x.ats](x) : Promise.reject(new Error('unknown ats')))
         .then(l => tag(x.ats, l, x.n)).catch(e => errors.push(`${x.n}(${x.ats}): ${e.message}`))),
       ...(cfg.feeds || []).map(f => feeds[f]().then(l => tag(f, l)).catch(e => errors.push(`${f}: ${e.message}`))),
     ]);

@@ -44,6 +44,7 @@ plugins/job-buddy/
     SKILL.md                               ← the instructions Claude follows
     references/                            ← rubric design, sources, tailoring, outcomes
     scripts/collector.js                   ← free job collector (runs in Claude's built-in browser)
+    scripts/jb.py                          ← core: scoring maths, evidence check, tracker updates
     assets/workspace-template/             ← blank profile, tracker and folders
 ```
 
@@ -57,6 +58,8 @@ The `.gitignore` blocks them if you fork this. What goes where:
 - **Indeed and JobDataLake** (if you connect them) receive only your search words and
   location, never your CV.
 - **Job sites** read by the collector receive ordinary page requests, with no login.
+- **The shared feed** is a public file of job listings built daily from employers' public job
+  boards (`feed/`). Your Job Buddy downloads it; it never uploads anything.
 - **Nothing is sent to the Job Buddy author.** There is no tracking or analytics.
 
 ## Problems and ideas

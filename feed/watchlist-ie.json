@@ -1,0 +1,160 @@
+{
+ "about": "Employers with Ireland-based or Ireland-eligible remote roles on public job-board APIs. Checked 31 Oct 2026. Add companies by pull request or a 'Suggest a job source' issue.",
+ "companies": [
+  {
+   "name": "Airbnb",
+   "ats": "greenhouse",
+   "id": "airbnb"
+  },
+  {
+   "name": "Anthropic",
+   "ats": "greenhouse",
+   "id": "anthropic"
+  },
+  {
+   "name": "Coinbase",
+   "ats": "greenhouse",
+   "id": "coinbase"
+  },
+  {
+   "name": "Datadog",
+   "ats": "greenhouse",
+   "id": "datadog"
+  },
+  {
+   "name": "Docker",
+   "ats": "ashby",
+   "id": "docker"
+  },
+  {
+   "name": "Dropbox",
+   "ats": "greenhouse",
+   "id": "dropbox"
+  },
+  {
+   "name": "Elastic",
+   "ats": "greenhouse",
+   "id": "elastic"
+  },
+  {
+   "name": "Flipdish",
+   "ats": "greenhouse",
+   "id": "flipdish"
+  },
+  {
+   "name": "GitLab",
+   "ats": "greenhouse",
+   "id": "gitlab"
+  },
+  {
+   "name": "Harvey",
+   "ats": "ashby",
+   "id": "harvey"
+  },
+  {
+   "name": "Intercom",
+   "ats": "greenhouse",
+   "id": "intercom"
+  },
+  {
+   "name": "Klaviyo",
+   "ats": "greenhouse",
+   "id": "klaviyo"
+  },
+  {
+   "name": "Kota",
+   "ats": "ashby",
+   "id": "kota"
+  },
+  {
+   "name": "LaunchDarkly",
+   "ats": "greenhouse",
+   "id": "launchdarkly"
+  },
+  {
+   "name": "Linear",
+   "ats": "ashby",
+   "id": "linear"
+  },
+  {
+   "name": "MongoDB",
+   "ats": "greenhouse",
+   "id": "mongodb"
+  },
+  {
+   "name": "Notion",
+   "ats": "ashby",
+   "id": "notion"
+  },
+  {
+   "name": "Okta",
+   "ats": "greenhouse",
+   "id": "okta"
+  },
+  {
+   "name": "OpenAI",
+   "ats": "ashby",
+   "id": "openai"
+  },
+  {
+   "name": "Payoneer",
+   "ats": "greenhouse",
+   "id": "payoneer"
+  },
+  {
+   "name": "Pinterest",
+   "ats": "greenhouse",
+   "id": "pinterest"
+  },
+  {
+   "name": "Reddit",
+   "ats": "greenhouse",
+   "id": "reddit"
+  },
+  {
+   "name": "RevenueCat",
+   "ats": "ashby",
+   "id": "revenuecat"
+  },
+  {
+   "name": "ServiceNow",
+   "ats": "smartrecruiters",
+   "id": "ServiceNow"
+  },
+  {
+   "name": "Squarespace",
+   "ats": "greenhouse",
+   "id": "squarespace"
+  },
+  {
+   "name": "Stripe",
+   "ats": "greenhouse",
+   "id": "stripe"
+  },
+  {
+   "name": "Tines",
+   "ats": "greenhouse",
+   "id": "tines"
+  },
+  {
+   "name": "Toast",
+   "ats": "greenhouse",
+   "id": "toast"
+  },
+  {
+   "name": "Twilio",
+   "ats": "greenhouse",
+   "id": "twilio"
+  },
+  {
+   "name": "Vanta",
+   "ats": "ashby",
+   "id": "vanta"
+  },
+  {
+   "name": "Wayflyer",
+   "ats": "ashby",
+   "id": "wayflyer"
+  }
+ ]
+}

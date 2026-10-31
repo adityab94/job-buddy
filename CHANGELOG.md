@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.5.0 (31 Oct 2026)
+
+- **Shared Ireland feed.** A daily job reads ~30 employers' public job boards (Stripe, Intercom,
+  MongoDB, Harvey, OpenAI, Anthropic, Tines, Wayflyer…) and publishes one file. The collector
+  reads it with `feed: true`, so most users no longer need to look up board IDs. Broken boards
+  open a "Feed health" issue automatically.
+- **Scores you can check.** Each dimension now cites a word-for-word quote from the job ad,
+  saved in the new `jds/` folder. A core script (`scripts/jb.py`) does the arithmetic and tiers,
+  and flags any quote that isn't really in the ad. Confidence and near-cut-off warnings come
+  from the same check.
+- **Reliable tracker.** All tracker writes go through the core script: matching on company +
+  role, IDs, dates and the Applied?/Callback? formulas. The blank tracker now has those formulas
+  pre-filled (they were missing, so the Funnel sheet stayed empty for new users).
+- **Safe upgrades.** Workspaces carry a version number. Older folders are backed up and upgraded
+  automatically on first use.
+- **Safer with untrusted text.** Job ads, emails and pages are treated as data, never as
+  instructions; scam-style recruiter emails are called out. Two new evals test this.
+- Location matching also looks for Irish places in job titles ("Remote - Ireland").
+
 ## 0.4.0 (31 Oct 2026)
 
 - The browser collector now reports how many listings each source returned, and flags a

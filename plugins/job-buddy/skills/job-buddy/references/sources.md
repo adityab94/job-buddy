@@ -58,7 +58,8 @@ How to run it:
 1. Build CONFIG from profile.md: `include` = the track's target titles (lowercase),
    `exclude` = the track's exclude words, `places`, `remote`, `days`, `seen` (see below),
    `companies` (watchlist), `feeds` (remote feeds switched on), `builtin: true/false`,
-   `jobsiePlace` (the user's town or county, e.g. `cork`, `galway`; default `dublin`).
+   `jobsiePlace` (the user's town or county, e.g. `cork`, `galway`; default `dublin`),
+   `feed: true` for anyone searching in Ireland (see "Shared feed" below).
    With several tracks, run once per track or merge the include lists and route afterwards.
 2. Open `https://builtindublin.ie/jobs` in the built-in browser (any page on that site works,
    and it is only a host page: the watchlist and feeds work from it for users anywhere).
@@ -89,11 +90,22 @@ What the collector reads (all tested Oct 2026):
 
 | Source | How | Notes |
 |---|---|---|
+| Shared feed | One daily file built from ~30 employers' public job-board APIs | Ireland only. One request instead of many |
 | Greenhouse, Lever, Ashby, SmartRecruiters, Workable | Official public job-board APIs per company | Stable. Needs the company's board ID |
 | Remotive, RemoteOK | Free remote-job APIs | RemoteOK asks for credit with a link |
 | Arbeitnow | Free EU job API | Mostly Germany; leave off for Ireland unless relevant |
 | Built In Dublin | Public search pages | Tech and startup roles in Dublin |
 | Jobs.ie | Public search pages | Sister site of IrishJobs; strongest for non-tech fields |
+
+**Shared feed (Ireland).** Once a day, the Job Buddy repo reads the public job boards of
+about 30 employers with Irish roles (Stripe, Intercom, MongoDB, Datadog, Harvey, OpenAI,
+Anthropic, Tines, Wayflyer, LaunchDarkly…; the list is `feed/watchlist-ie.json` in the repo)
+and publishes one file of Ireland-relevant jobs. With `feed: true` the collector reads that
+file instead of fetching each board, and skips watchlist companies the feed already covers,
+so the user's own watchlist only needs companies that aren't in it. The feed holds public
+job listings only; nothing about the user is sent anywhere. If it's more than two days old
+the collector says so: report it (see **Report a problem** in SKILL.md). Users who want a
+company added to the shared list can suggest it with a "Suggest a job source" issue.
 
 Finding a company's board ID: open its careers page and look at where "Apply" links go:
 `boards.greenhouse.io/<id>` or `job-boards.greenhouse.io/<id>`, `jobs.lever.co/<id>`,

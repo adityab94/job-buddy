@@ -24,9 +24,14 @@
 | Applied?, Callback? | Formula columns; don't overwrite |
 | Track | Which track the role was scored under (column V, after the formula columns) |
 
-The Applied? and Callback? columns contain formulas that feed the Funnel sheet. When adding
-rows, write values into the other columns only. If the sheet runs out of pre-filled formula
-rows, copy the formulas down from the row above.
+The Applied? and Callback? columns contain formulas that feed the Funnel sheet, which reads
+Tier (J), Status (M), Applied? (T) and Callback? (U) by column letter, so those columns must
+stay where they are. `jb.py tracker upsert` writes rows, IDs, Last Update and both formulas,
+matches existing roles on company + role, and refuses to write if a fixed column has moved.
+
+Without Python, write values into the other columns only and copy the formulas down from the
+row above: Applied? is `=IF(OR(M2="",M2="Found"),0,1)`; Callback? is
+`=IF(OR(M2="Assessment",M2="Interview",M2="Offer",AND(M2="Rejected",OR(N2="Assessment",N2="Interview",N2="Final"))),1,0)`.
 
 ## Status values
 

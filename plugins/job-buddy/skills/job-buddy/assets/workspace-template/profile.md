@@ -1,6 +1,7 @@
 # My job search profile
 
 Status: NOT SET UP
+Workspace version: 1
 (Claude fills this in with you on first use and changes it to ACTIVE.
 You can edit anything here yourself at any time.)
 
@@ -24,6 +25,7 @@ You can edit anything here yourself at any time.)
 |---|---|---|
 | Indeed (connector) | | country code, location |
 | JobDataLake (connector) | | tech, data, sales/ops; big companies' own career sites |
+| Shared feed (browser) | | ~30 big employers hiring in Ireland, updated daily |
 | Built In Dublin (browser) | | tech and startup roles; Dublin only |
 | Company watchlist (browser) | | see table below |
 | Jobs.ie (browser) | | sister site of IrishJobs; place: dublin |

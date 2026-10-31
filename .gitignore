@@ -9,3 +9,5 @@ job-search/
 
 # Eval run output
 **/evals/results/
+__pycache__/
+*.pyc

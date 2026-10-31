@@ -1,0 +1,65 @@
+name: Build shared feed
+
+# Daily: read every company board in feed/watchlist-ie.json through its public job-board API,
+# publish feed/ie.json to the "feed" branch, and open (or update) a "Feed health" issue when a
+# source fails or drops to zero. Users' Job Buddy reads
+# https://raw.githubusercontent.com/adityab94/job-buddy/feed/ie.json
+on:
+  schedule:
+    - cron: "30 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: feed
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get yesterday's feed for comparison
+        run: git show origin/feed:ie.json > previous.json 2>/dev/null || echo "no previous feed"
+
+      - name: Build
+        run: python3 feed/build_feed.py --previous previous.json --out out
+
+      - name: Refuse to publish an empty feed
+        run: |
+          n=$(python3 -c "import json;print(json.load(open('out/ie.json'))['jobs_count'])")
+          echo "jobs: $n"
+          if [ "$n" -eq 0 ]; then echo "Empty feed; keeping yesterday's." ; exit 1; fi
+
+      - name: Publish to the feed branch
+        run: |
+          git config user.name "job-buddy-feed[bot]"
+          git config user.email "job-buddy-feed@users.noreply.github.com"
+          git worktree add --detach pub
+          cd pub
+          git checkout --orphan feed-new
+          git rm -rfq . || true
+          cp ../out/ie.json ../out/health.json .
+          printf '# Job Buddy shared feed\n\nBuilt daily by .github/workflows/feed.yml on main. Do not edit.\n' > README.md
+          git add ie.json health.json README.md
+          git commit -qm "Feed $(date -u +%Y-%m-%d)"
+          git push -f origin HEAD:feed
+
+      - name: Report source health
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          alerts=$(python3 -c "import json;a=json.load(open('out/health.json'))['alerts'];print('\n'.join('- '+x for x in a))")
+          num=$(gh issue list --state open --search 'in:title "Feed health"' --json number --jq '.[0].number')
+          if [ -n "$alerts" ]; then
+            body=$(printf 'Sources that failed or dropped to zero on %s:\n\n%s\n\nFix the board ID in feed/watchlist-ie.json or remove the company.' "$(date -u +%F)" "$alerts")
+            if [ -n "$num" ]; then gh issue comment "$num" --body "$body"; else gh issue create --title "Feed health" --body "$body"; fi
+          elif [ -n "$num" ]; then
+            gh issue close "$num" --comment "All sources healthy on $(date -u +%F)."
+          fi

@@ -26,7 +26,7 @@ if not m or m.group(1) != version:
 
 # The zip must hold exactly the skill folder (as job-buddy/...), byte for byte.
 local = {"job-buddy/" + p.relative_to(SKILL_DIR).as_posix(): p.read_bytes()
-         for p in SKILL_DIR.rglob("*") if p.is_file() and p.name != ".DS_Store"}
+         for p in SKILL_DIR.rglob("*") if p.is_file() and p.name != ".DS_Store" and "__pycache__" not in p.parts}
 with zipfile.ZipFile(ROOT / "job-buddy-skill.zip") as z:
     zipped = {n: z.read(n) for n in z.namelist() if not n.endswith("/")}
 for n in sorted(local.keys() - zipped.keys()):
