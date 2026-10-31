@@ -8,7 +8,7 @@ Context for Claude Code working in this repo. Read this first.
 search from a local folder: it builds a scoring rubric for their field, finds roles, scores them
 0–100 (tiers A/B/C), tailors CVs and cover letters honestly, and keeps an application tracker.
 Audience: job seekers in any field (Ireland/EU default), many non-technical, on Windows or Mac.
-Repo: https://github.com/adityab94/job-buddy · Licence: MIT · Current version: 0.5.0
+Repo: https://github.com/adityab94/job-buddy · Licence: MIT · Current version: 0.5.1
 
 ## Repo layout
 

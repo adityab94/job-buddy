@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.1 (31 Oct 2026)
+
+- Tailoring is stricter about honesty: no numbers worked out from dates ("7 years"), no claims
+  stretched past what the CV says, and a final line-by-line check against the CV. Found by the
+  eval suite: before this fix, tailoring with Job Buddy scored worse on honesty than without it.
+- The skill now triggers reliably on quick "score this role" requests, even with a profile
+  pasted in the message.
+- Eval fix: the assessment-invite test used a deadline on the wrong weekday.
+
 ## 0.5.0 (31 Oct 2026)
 
 - **Shared Ireland feed.** A daily job reads ~30 employers' public job boards (Stripe, Intercom,

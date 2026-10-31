@@ -19,7 +19,16 @@ Allowed:
 Not allowed:
 - Skills, tools, credentials, titles, employers or dates they don't have
 - Metrics that aren't in the CV or confirmed by them (don't upgrade "improved" to "improved 40%")
+- Numbers you work out yourself, such as "7 years' experience" added up from job dates, or a
+  team size or percentage inferred from context. Dates are often approximate, so a derived
+  total can be wrong. Use the CV's own wording, or ask them to confirm the figure first.
+- Stretching a claim past what the CV says: who uses their work ("reporting both teams
+  use"), what a workflow connects to, or its scope. If a stronger version would fit the ad
+  better, ask whether it's true instead of writing it.
 - Implying seniority or ownership they didn't have ("led" when they "supported")
+
+Before handing over, reread every line of the tailored text against the CV: each claim, number
+and name must be traceable to the CV or to something they confirmed.
 
 If the JD asks for something they don't have, leave it out of the CV, list it as a gap in your
 summary to the user, and, if it helps, suggest how a cover letter could address it honestly
