@@ -90,7 +90,12 @@ def main():
     ap.add_argument("--out", default="out")
     a = ap.parse_args()
     watch = json.loads(Path(a.watchlist).read_text())["companies"]
-    previous = json.loads(Path(a.previous).read_text()) if a.previous and Path(a.previous).is_file() else None
+    previous = None
+    if a.previous and Path(a.previous).is_file():
+        try:
+            previous = json.loads(Path(a.previous).read_text())
+        except json.JSONDecodeError:
+            print("previous feed unreadable; skipping the comparison")
     sources, jobs = {}, []
     with cf.ThreadPoolExecutor(max_workers=8) as pool:
         for name, s, j in pool.map(fetch, watch):

@@ -26,7 +26,8 @@ jobs:
           fetch-depth: 0
 
       - name: Get yesterday's feed for comparison
-        run: git show origin/feed:ie.json > previous.json 2>/dev/null || echo "no previous feed"
+        run: |
+          if git show origin/feed:ie.json > prev.tmp 2>/dev/null; then mv prev.tmp previous.json; else rm -f prev.tmp; echo "no previous feed"; fi
 
       - name: Build
         run: python3 feed/build_feed.py --previous previous.json --out out
