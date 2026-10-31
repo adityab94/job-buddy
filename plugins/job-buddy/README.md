@@ -5,7 +5,8 @@ Runs your job search from a folder on your computer. Say **"set me up"** to star
 Install (Claude Code):
 
 ```
-/plugin install job-buddy --marketplace adityab94/job-buddy
+/plugin marketplace add adityab94/job-buddy
+/plugin install job-buddy@job-buddy
 ```
 
 - Builds a scoring rubric for your field, with one or more role **tracks** (each with its own CV)

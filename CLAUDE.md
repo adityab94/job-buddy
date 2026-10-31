@@ -37,7 +37,8 @@ PRODUCT.md, DESIGN.md                  product truth and the dashboard's design 
                                        .impeccable/ holds the surface brief and design.json sidecar
 ```
 
-Install line: `/plugin install job-buddy --marketplace adityab94/job-buddy`
+Install lines (Claude Code): `/plugin marketplace add adityab94/job-buddy`, then
+`/plugin install job-buddy@job-buddy`. (There is no `--marketplace` flag; the old line was wrong.)
 
 ## Key design decisions (and why)
 
@@ -130,7 +131,8 @@ Install line: `/plugin install job-buddy --marketplace adityab94/job-buddy`
 
 1. ~~**First push**, tag `v0.3.0` and Release with the zip.~~ Done 31 Oct 2026; v0.3.1 added
    JobDataLake as an optional connector.
-2. **Install test from GitHub**: `/plugin install job-buddy --marketplace adityab94/job-buddy`, then
+2. **Install test from GitHub**: `/plugin marketplace add adityab94/job-buddy` +
+   `/plugin install job-buddy@job-buddy`, then
    "set me up" on an empty folder. Verify the workspace template is copied and setup completes.
 3. **Retest two sources** marked untested in sources.md: Workable (needs a real company slug) and
    EURES (search URL was wrong), plus EURAXESS and HSE careers for non-tech users.

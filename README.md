@@ -15,7 +15,8 @@ then install **job-buddy**.
 
 **Claude Code (for technical users):**
 ```
-/plugin install job-buddy --marketplace adityab94/job-buddy
+/plugin marketplace add adityab94/job-buddy
+/plugin install job-buddy@job-buddy
 ```
 
 **Claude on the web (skills only):** download `job-buddy-skill.zip` from Releases and

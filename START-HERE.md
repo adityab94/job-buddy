@@ -71,5 +71,6 @@ See [Troubleshooting](plugins/job-buddy/TROUBLESHOOTING.md), or ask Claude to "r
 problem with Job Buddy".
 
 Prefer the terminal? Job Buddy also works in Claude Code:
-`/plugin install job-buddy --marketplace adityab94/job-buddy`, though some job sites and the
+`/plugin marketplace add adityab94/job-buddy`, then
+`/plugin install job-buddy@job-buddy`, though some job sites and the
 sidebar dashboard need the Claude desktop app.
