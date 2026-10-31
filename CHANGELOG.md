@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.0 (31 Oct 2026)
+
+- **Dashboard.** A friendly `dashboard.html` in your folder: headline numbers, what needs your
+  attention (deadlines, interviews, quiet applications, Tier A roles to apply for), a pipeline
+  board, whether your rubric works, your top gaps and closed roles. Works offline, sends
+  nothing anywhere, light and dark mode, fits a phone. Refreshes whenever the tracker changes.
+- **Gap plan.** Each score now records the gaps that cost points. Ask "what should I learn?"
+  and Job Buddy re-scores every role as if you had each missing skill, then shows which one
+  moves the most open roles up a tier, with an honest plan to close it.
+- **Fix:** scores ending in .5 now round up (72.5 → 73). Python's default rounding sent them
+  down to the even number, which could drop a role a tier.
+
 ## 0.5.1 (31 Oct 2026)
 
 - Tailoring is stricter about honesty: no numbers worked out from dates ("7 years"), no claims

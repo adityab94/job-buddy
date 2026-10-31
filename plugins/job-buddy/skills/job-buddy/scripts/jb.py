@@ -8,16 +8,21 @@ Usage (WORKSPACE is the user's job-search folder; JSON goes in on stdin and come
   jb.py check   WORKSPACE                 workspace version, missing files, whether openpyxl is present
   jb.py migrate WORKSPACE                 back up, then bring an older workspace up to date
   jb.py rubric  WORKSPACE [--track T]     tracks with their weights and tier cut-offs
-  jb.py score   WORKSPACE                 {"track", "jd_file", "dimensions": {name: {"score", "quote"}}}
+  jb.py score   WORKSPACE                 {"track", "company", "role", "jd_file",
+                                           "dimensions": {name: {"score", "quote"}},
+                                           "gaps": [{"skill", "dimension", "score_if_closed"}]}
+  jb.py gaps    WORKSPACE [--track T] [--names]   which missing skills hold back the most roles
   jb.py seen    WORKSPACE check|add       lines of "company|title" on stdin
   jb.py tracker WORKSPACE list [--all]    tracker rows as JSON
   jb.py tracker WORKSPACE upsert          [{"Company", "Role", ...column: value}] on stdin
+  jb.py dashboard WORKSPACE               write dashboard.html (also refreshed after every upsert)
 
 Exit codes: 0 ok, 2 bad input, 3 file open elsewhere (close it and retry), 4 openpyxl missing.
 Standard library only, except the tracker commands and migration's tracker step (openpyxl).
 """
 import datetime as dt
 import json
+import math
 import re
 import shutil
 import sys
@@ -57,6 +62,11 @@ def key(company, title):
     c = re.sub(r"[^a-z0-9]", "", (company or "").lower())
     t = re.sub(r"\s+", " ", (title or "").lower()).strip()
     return f"{c}|{t}"
+
+
+def half_up(x):
+    """72.5 -> 73. Python's round() rounds halves to even (72.5 -> 72), which can drop a tier."""
+    return int(math.floor(x + 0.5))
 
 
 def today():
@@ -193,11 +203,9 @@ def score(ws, req):
     if given:
         problems.append(f"ignored dimensions not in the rubric: {sorted(given)}")
 
-    total = round(total)
-    tier = next((t for t, cut in tiers.items() if total >= cut), None)
-    if tier is None:
-        letters = sorted(set("ABC") | set(tiers))
-        tier = next((t for t in letters if t not in tiers), "C")
+    total = half_up(total)
+    tier = tier_for(total, tiers)
+    gaps = check_gaps(req.get("gaps") or [], {r["dimension"]: r["score"] for r in rows})
 
     weak = [r["dimension"] for r in rows if r["evidence"] != "verified"]
     invented = [r["dimension"] for r in rows if r["evidence"] == "not in job ad"]
@@ -210,8 +218,138 @@ def score(ws, req):
         problems.append("no jd_file given, so evidence could not be checked; save the job ad to jds/")
 
     near = [f"{total} is within 3 points of the Tier {t} cut-off ({c})" for t, c in tiers.items() if abs(total - c) <= 3]
-    return {"track": track["name"], "score": total, "tier": tier, "confidence": confidence,
-            "dimensions": rows, "unverified": weak, "near_cutoff": near, "problems": problems}
+    result = {"track": track["name"], "score": total, "tier": tier, "confidence": confidence,
+              "dimensions": rows, "gaps": gaps, "unverified": weak, "near_cutoff": near, "problems": problems}
+
+    # Keep the breakdown next to the job ad, so 'gaps' can re-score roles later. Not saved while
+    # evidence is invented: Claude fixes the quotes and runs score again.
+    if req.get("jd_file") and not invented:
+        saved = jd_path.with_name(jd_path.stem + ".score.json")
+        saved.write_text(json.dumps({
+            "company": req.get("company") or "", "role": req.get("role") or "", "track": track["name"],
+            "scored_on": today().isoformat(), "score": total, "tier": tier,
+            "dimensions": {r["dimension"]: r["score"] for r in rows}, "gaps": gaps}, indent=1, ensure_ascii=False),
+            encoding="utf-8")
+        result["saved"] = saved.relative_to(ws.resolve()).as_posix()
+    return result
+
+
+def tier_for(total, tiers):
+    tier = next((t for t, cut in tiers.items() if total >= cut), None)
+    if tier is None:
+        letters = sorted(set("ABC") | set(tiers))
+        tier = next((t for t in letters if t not in tiers), "C")
+    return tier
+
+
+def check_gaps(gaps, dim_scores):
+    """Each gap: {"skill", "dimension", "score_if_closed"}: what the dimension would score if the
+    user had the skill. Claude's estimate; the script only checks it's consistent."""
+    lower = {d.lower(): d for d in dim_scores}
+    clean = []
+    for g in gaps:
+        if not isinstance(g, dict) or not str(g.get("skill") or "").strip():
+            raise Fail(f"each gap needs a 'skill': {g}")
+        dim = lower.get(str(g.get("dimension") or "").lower().strip())
+        if not dim:
+            raise Fail(f"gap '{g['skill']}' names dimension {g.get('dimension')!r}, not in the rubric: {list(dim_scores)}")
+        to = g.get("score_if_closed")
+        if not isinstance(to, (int, float)) or not dim_scores[dim] < to <= 5 or (to * 2) % 1:
+            raise Fail(f"gap '{g['skill']}': score_if_closed must be above the current {dim_scores[dim]} and at most 5")
+        clean.append({"skill": str(g["skill"]).strip(), "dimension": dim, "score_if_closed": to})
+    return clean
+
+
+# ---------- gap economics ----------
+
+OPEN = {"", "found", "applied", "acknowledged", "assessment", "interview"}
+MIN_ROLES = 8  # below this, the gap plan is labelled an early hunch (matches outcomes.md's spirit)
+
+
+def skill_key(s):
+    return re.sub(r"[^a-z0-9+#.]+", " ", (s or "").lower()).strip()
+
+
+def statuses(ws):
+    """Tracker Status and Top Gap by company|role key, if the tracker can be read."""
+    try:
+        wb, sheet, cols, _ = load_tracker(ws)
+    except Fail:
+        return None
+    rows = {}
+    for r in data_rows(sheet, cols):
+        k = key(sheet[f"{cols['Company']}{r}"].value, sheet[f"{cols['Role']}{r}"].value)
+        rows[k] = {"status": str(sheet[f"{cols['Status']}{r}"].value or ""),
+                   "top_gap": str(sheet[f"{cols['Top Gap']}{r}"].value or "") if "Top Gap" in cols else ""}
+    return rows
+
+
+def gap_report(ws, track_name=None):
+    tracks = parse_tracks((ws / "profile.md").read_text(encoding="utf-8"))
+    track_of = {t["name"]: t for t in tracks}
+    tracker = statuses(ws)
+    roles, skipped = [], []
+    for p in sorted((ws / "jds").glob("*.score.json")) if (ws / "jds").is_dir() else []:
+        try:
+            s = json.loads(p.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            skipped.append(f"{p.name}: unreadable")
+            continue
+        t = track_of.get(s.get("track"))
+        if track_name and (not t or t is not find_track(tracks, track_name)):
+            continue
+        if not t or set(map(str.lower, t["weights"])) != set(map(str.lower, s.get("dimensions", {}))):
+            skipped.append(f"{p.name}: rubric changed since it was scored; re-score it to include it")
+            continue
+        dims = {d: s["dimensions"][next(k for k in s["dimensions"] if k.lower() == d.lower())] for d in t["weights"]}
+        base = half_up(sum(v / 5 * t["weights"][d] for d, v in dims.items()))
+        info = (tracker or {}).get(key(s.get("company"), s.get("role")), {})
+        roles.append({"company": s.get("company"), "role": s.get("role"), "track": t["name"], "tiers": t["tiers"],
+                      "weights": t["weights"], "dims": dims, "score": base, "tier": tier_for(base, t["tiers"]),
+                      "status": info.get("status", ""), "gaps": s.get("gaps") or []})
+
+    skills = {}
+    for r in roles:
+        is_open = r["status"].lower() in OPEN
+        for g in r["gaps"]:
+            k = skill_key(g["skill"])
+            e = skills.setdefault(k, {"names": {}, "roles": 0, "open_roles": 0, "rejected_roles": 0,
+                                       "points": [], "upgrades": []})
+            e["names"][g["skill"]] = e["names"].get(g["skill"], 0) + 1
+            e["roles"] += 1
+            e["open_roles"] += is_open
+            e["rejected_roles"] += r["status"].lower() == "rejected"
+            dims = dict(r["dims"])
+            dims[g["dimension"]] = max(dims[g["dimension"]], g["score_if_closed"])
+            new = half_up(sum(v / 5 * r["weights"][d] for d, v in dims.items()))
+            e["points"].append(new - r["score"])
+            new_tier = tier_for(new, r["tiers"])
+            if new_tier != r["tier"] and is_open:
+                e["upgrades"].append(f"{r['company']}, {r['role']}: {r['score']} {r['tier']} -> {new} {new_tier}")
+
+    ranked = sorted(skills.values(), key=lambda e: (-sum(u.endswith(" A") for u in e["upgrades"]), -len(e["upgrades"]),
+                                                    -e["roles"], -sum(e["points"])))
+    out_skills = [{"skill": max(e["names"], key=e["names"].get), "roles_with_gap": e["roles"],
+                   "open_roles_with_gap": e["open_roles"], "rejected_roles_with_gap": e["rejected_roles"],
+                   "avg_points_if_closed": round(sum(e["points"]) / len(e["points"]), 1),
+                   "tier_upgrades": e["upgrades"]} for e in ranked]
+
+    # Roles scored before 0.6 have no score file; their tracker 'Top Gap' text still counts.
+    scored = {key(r["company"], r["role"]) for r in roles}
+    legacy = {}
+    for k, info in (tracker or {}).items():
+        if k not in scored and info["top_gap"].strip():
+            g = info["top_gap"].strip()
+            legacy[g] = legacy.get(g, 0) + 1
+    notes = []
+    if len(roles) < MIN_ROLES:
+        notes.append(f"only {len(roles)} roles have a saved score breakdown: treat this as an early hunch")
+    if tracker is None:
+        notes.append("tracker not read (openpyxl missing?), so every role counts as open")
+    return {"roles_analysed": len(roles), "skills": out_skills,
+            "top_gap_column": dict(sorted(legacy.items(), key=lambda kv: -kv[1])),
+            "known_skill_names": sorted({max(e["names"], key=e["names"].get) for e in skills.values()}),
+            "skipped": skipped, "notes": notes}
 
 
 # ---------- seen list ----------
@@ -353,7 +491,20 @@ def tracker_upsert(ws, rows):
         result.append({"row": r, "id": sheet[f"{cols['ID']}{r}"].value, "action": "added" if new else "updated",
                        "company": row["Company"], "role": row["Role"]})
     save_tracker(wb, path)
+    try:
+        build_dashboard(ws)
+    except Exception:  # noqa: BLE001 - the tracker write succeeded; the page is refreshed next time
+        pass
     return result
+
+
+def build_dashboard(ws):
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import dashboard
+    rows = tracker_list(ws, all_cols=True)
+    page = dashboard.render(rows, gap_report(ws), today().isoformat())
+    (ws / "dashboard.html").write_text(page, encoding="utf-8")
+    return {"written": "dashboard.html", "roles": len(rows)}
 
 
 # ---------- check and migrate ----------
@@ -453,10 +604,15 @@ def main(argv):
         out([find_track(tracks, rest[1])] if rest[:1] == ["--track"] and len(rest) > 1 else tracks)
     elif cmd == "score":
         out(score(ws, read_stdin_json()))
+    elif cmd == "gaps":
+        report = gap_report(ws, rest[1] if rest[:1] == ["--track"] and len(rest) > 1 else None)
+        out({"known_skill_names": report["known_skill_names"]} if "--names" in rest else report)
     elif cmd == "seen" and rest[:1] in (["check"], ["add"]):
         out(seen(ws, rest[0], [l for l in sys.stdin.read().splitlines() if l.strip()]))
     elif cmd == "tracker" and rest[:1] == ["list"]:
         out(tracker_list(ws, "--all" in rest))
+    elif cmd == "dashboard":
+        out(build_dashboard(ws))
     elif cmd == "tracker" and rest[:1] == ["upsert"]:
         out(tracker_upsert(ws, read_stdin_json()))
     else:

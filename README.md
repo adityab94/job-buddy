@@ -29,7 +29,8 @@ Updates: push a new version here and users get it when they update the marketpla
 4. Optional: connect **Indeed**, **Gmail** and **JobDataLake** (see `plugins/job-buddy/CONNECTORS.md`),
    and set up free job alerts on LinkedIn, Indeed and IrishJobs.
 
-Then say **"find me roles"**, paste a job link, or **"tailor my CV for <company>"**.
+Then say **"find me roles"**, paste a job link, or **"tailor my CV for <company>"**. Double-click
+`dashboard.html` in your folder any time for an overview, or ask **"what should I learn?"**.
 
 ## What's inside
 
@@ -44,7 +45,8 @@ plugins/job-buddy/
     SKILL.md                               ← the instructions Claude follows
     references/                            ← rubric design, sources, tailoring, outcomes
     scripts/collector.js                   ← free job collector (runs in Claude's built-in browser)
-    scripts/jb.py                          ← core: scoring maths, evidence check, tracker updates
+    scripts/jb.py                          ← core: scoring maths, evidence check, tracker, gap plan
+    scripts/dashboard.py                   ← builds dashboard.html (offline, nothing sent anywhere)
     assets/workspace-template/             ← blank profile, tracker and folders
 ```
 

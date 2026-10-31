@@ -54,6 +54,20 @@ it's open.
 The grey columns (Applied?, Callback?) are formulas. If something got typed over them,
 ask Claude to "repair the tracker formulas".
 
+## Dashboard
+
+**There's no dashboard.html.**
+It appears once Job Buddy has written the first role to your tracker. You can also ask Claude
+to "show my dashboard".
+
+**The dashboard is out of date.**
+It refreshes whenever Claude updates the tracker. If you edited tracker.xlsx yourself, ask
+Claude to "refresh my dashboard".
+
+**The gap plan is empty.**
+It needs roles scored with Job Buddy 0.6 or later (each score now records the gaps). Older
+roles show up through the tracker's Top Gap column once you have a few.
+
 ## Usage limits
 
 A full search plus tailoring several CVs uses a fair amount of your Claude plan. If you hit

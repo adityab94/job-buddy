@@ -13,7 +13,8 @@ Install (Claude Code):
   remote-job feeds, job-alert emails (Gmail) and any link you paste
 - Scores each role 0–100 with reasons (tier A, B or C)
 - Tailors your CV and cover letter for strong matches, honestly
-- Keeps an application tracker and reviews what's working
+- Keeps an application tracker, with an easy dashboard page, and reviews what's working
+- Tells you which missing skill would move the most roles up a tier ("what should I learn?")
 
 Free to run: no paid scrapers, no API keys. It never logs in, applies or messages anyone for you.
 See CONNECTORS.md for the optional Indeed, Gmail and JobDataLake connectors, and
@@ -21,6 +22,7 @@ TROUBLESHOOTING.md if something isn't working.
 
 Things to say: "set me up", "find me roles", "is this a good fit? <link>",
 "tailor my CV for <company>", "I heard back from <company>", "how's my search going?",
+"show my dashboard", "what should I learn?",
 "add a track for <role>".
 
 ---

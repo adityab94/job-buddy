@@ -122,6 +122,11 @@ class Score(unittest.TestCase):
         self.assertEqual(r["confidence"], "high")
         self.assertEqual(r["unverified"], [])
 
+    def test_halves_round_up(self):
+        # 4,2.5,4,4,4 = 72.5: must be 73, not banker's-rounded 72
+        half = {k: {"score": s, "quote": dims()[k]["quote"]} for k, s in zip(dims(), [4, 2.5, 4, 4, 4])}
+        self.assertEqual(jb.score(self.ws, {"jd_file": "jds/tessel.txt", "dimensions": half})["score"], 73)
+
     def test_tier_b_c_and_near_cutoff(self):
         low = {k: {"score": 3, "quote": v["quote"]} for k, v in dims().items()}
         r = jb.score(self.ws, {"jd_file": "jds/tessel.txt", "dimensions": low})
@@ -177,6 +182,86 @@ class Score(unittest.TestCase):
         code, out, err = run_cli("score", str(self.ws), stdin="not json")
         self.assertEqual(code, 2)
         self.assertIn("not valid JSON", err)
+
+
+class Gaps(unittest.TestCase):
+    """Five scored roles; Python is the gap in three, two of them a few points short of Tier A."""
+
+    def score_role(self, company, role, scores, gaps):
+        (self.ws / "jds" / f"{company} - {role}.txt").write_text(JD, encoding="utf-8")
+        d = {k: {"score": s, "quote": dims()[k]["quote"]} for k, s in zip(dims(), scores)}
+        return jb.score(self.ws, {"company": company, "role": role, "jd_file": f"jds/{company} - {role}.txt",
+                                  "dimensions": d, "gaps": gaps})
+
+    def setUp(self):
+        self.ws = make_ws()
+        py = lambda to: {"skill": "Python", "dimension": "Automation & tooling", "score_if_closed": to}  # noqa: E731
+        # weights 30/25/15/20/10; e.g. [4,2,4,4,4] = 24+10+12+16+8 = 70
+        self.r1 = self.score_role("Wayflyer", "GTM Engineer", [4, 2, 4, 4, 4], [py(5)])          # 70 B -> 85 A
+        self.score_role("Harvey", "GTM Systems", [4, 2.5, 4, 4, 4], [py(4)])                     # 72.5 -> 73 B (half-up) -> 80 A
+        self.score_role("Kota", "RevOps Manager", [3, 2, 3, 3, 3], [py(4), {"skill": "Marketo",
+                        "dimension": "Core RevOps match", "score_if_closed": 4}])                 # 55 C -> 65 B
+        self.score_role("Tessel", "RevOps Manager", [5, 4, 4, 4, 5], [])                         # 88 A, no gaps
+        self.score_role("Corvid", "Sales Ops", [3, 3, 2, 3, 3], [{"skill": "marketo ",
+                        "dimension": "core revops match", "score_if_closed": 5}])                 # 57 C -> 69 B
+
+    def test_score_saves_breakdown(self):
+        self.assertEqual(self.r1["saved"], "jds/Wayflyer - GTM Engineer.score.json")
+        saved = json.loads((self.ws / self.r1["saved"]).read_text())
+        self.assertEqual((saved["company"], saved["score"], saved["tier"]), ("Wayflyer", 70, "B"))
+        self.assertEqual(saved["gaps"][0]["dimension"], "Automation & tooling")
+
+    def test_report_ranks_by_tier_a_upgrades(self):
+        r = jb.gap_report(self.ws)
+        self.assertEqual(r["roles_analysed"], 5)
+        top = r["skills"][0]
+        self.assertEqual(top["skill"], "Python")
+        self.assertEqual(top["roles_with_gap"], 3)
+        self.assertEqual(sorted(top["tier_upgrades"]), ["Harvey, GTM Systems: 73 B -> 80 A",
+                                                        "Kota, RevOps Manager: 55 C -> 65 B",
+                                                        "Wayflyer, GTM Engineer: 70 B -> 85 A"])
+        marketo = r["skills"][1]
+        self.assertEqual((marketo["skill"].lower().strip(), marketo["roles_with_gap"]), ("marketo", 2))  # names merged
+        self.assertEqual(sorted(marketo["tier_upgrades"]), ["Corvid, Sales Ops: 57 C -> 69 B",
+                                                            "Kota, RevOps Manager: 55 C -> 61 B"])
+        self.assertTrue(any("early hunch" in n for n in r["notes"]))
+
+    def test_invalid_gaps_refused(self):
+        for bad in ({"skill": "Python", "dimension": "Nope", "score_if_closed": 5},
+                    {"skill": "Python", "dimension": "Location fit", "score_if_closed": 3},  # below current
+                    {"dimension": "Location fit", "score_if_closed": 5}):
+            with self.assertRaises(jb.Fail):
+                self.score_role("X", "Y", [4, 4, 4, 4, 4], [bad])
+
+    def test_invented_quote_not_saved(self):
+        (self.ws / "jds" / "Q - R.txt").write_text(JD)
+        d = dims(**{"Core RevOps match": {"score": 5, "quote": "owns quote-to-cash end to end"}})
+        r = jb.score(self.ws, {"company": "Q", "role": "R", "jd_file": "jds/Q - R.txt", "dimensions": d})
+        self.assertNotIn("saved", r)
+        self.assertFalse((self.ws / "jds" / "Q - R.score.json").exists())
+
+    def test_rubric_change_skips_old_scores(self):
+        p = self.ws / "profile.md"
+        p.write_text(p.read_text().replace("| Location fit | 10 |", "| Location & hours | 10 |"))
+        r = jb.gap_report(self.ws)
+        self.assertEqual(r["roles_analysed"], 0)
+        self.assertEqual(len(r["skipped"]), 5)
+
+    @unittest.skipUnless(HAS_XL, "openpyxl not installed")
+    def test_closed_roles_dont_count_as_upgrades(self):
+        jb.tracker_upsert(self.ws, [{"Company": "Wayflyer", "Role": "GTM Engineer", "Status": "Rejected",
+                                     "Rejected At": "Interview"},
+                                    {"Company": "Old Co", "Role": "Analyst", "Top Gap": "No Python"}])
+        r = jb.gap_report(self.ws)
+        top = next(s for s in r["skills"] if s["skill"] == "Python")
+        self.assertEqual(top["rejected_roles_with_gap"], 1)
+        self.assertEqual(len(top["tier_upgrades"]), 2)  # Wayflyer is closed now
+        self.assertEqual(r["top_gap_column"], {"No Python": 1})
+
+    def test_cli_names(self):
+        code, out, _ = run_cli("gaps", str(self.ws), "--names")
+        self.assertEqual(code, 0)
+        self.assertIn("Python", out["known_skill_names"])
 
 
 class Seen(unittest.TestCase):
@@ -239,6 +324,33 @@ class Tracker(unittest.TestCase):
         wb.save(self.ws / "tracker.xlsx")
         with self.assertRaises(jb.Fail):
             jb.tracker_list(self.ws, False)
+
+
+@unittest.skipUnless(HAS_XL, "openpyxl not installed")
+class Dashboard(unittest.TestCase):
+    def setUp(self):
+        self.ws = make_ws()
+
+    def test_written_on_upsert_and_on_demand(self):
+        self.assertFalse((self.ws / "dashboard.html").exists())
+        jb.tracker_upsert(self.ws, {"Company": "Tessel", "Role": "RevOps Manager", "Tier": "A", "Fit Score": 88})
+        page = (self.ws / "dashboard.html").read_text()
+        self.assertIn('"Company": "Tessel"', page)
+        self.assertEqual(jb.build_dashboard(self.ws)["roles"], 1)
+
+    def test_tracker_text_cannot_break_out_of_the_data_block(self):
+        evil = "</script><script>alert(1)</script>"
+        jb.tracker_upsert(self.ws, {"Company": evil, "Role": "x", "Notes": "<img src=x onerror=alert(1)>"})
+        page = (self.ws / "dashboard.html").read_text()
+        data = page.split('<script id="data" type="application/json">')[1].split("</script>")[0]
+        self.assertNotIn("<", data)
+        self.assertEqual(json.loads(data)["rows"][0]["Company"], evil)
+
+    def test_no_external_requests(self):
+        jb.build_dashboard(self.ws)
+        page = (self.ws / "dashboard.html").read_text()
+        self.assertNotRegex(page, r'(src|href)\s*=\s*"https?:')
+        self.assertNotIn("@import", page)
 
 
 class Migrate(unittest.TestCase):
