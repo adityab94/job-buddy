@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.2 (31 Oct 2026)
+
+- The Buddy Social icon for the plugin listing (`assets/icon.png`, 1024px, circular).
+- The dashboard logo now ships as a plain image file (`scripts/logo-mask.png`) instead of
+  text embedded in a script. The dashboard looks the same.
+
 ## 0.8.1 (31 Oct 2026)
 
 - Privacy policy ([PRIVACY.md](plugins/job-buddy/PRIVACY.md)), linked from the plugin manifest
