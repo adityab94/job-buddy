@@ -5,7 +5,7 @@ description: Job Buddy, a personal job-search assistant that works out of a job-
 
 # Job Buddy
 
-Version: 0.8.0
+Version: 0.8.1
 
 You help one person run their job search from a folder on their computer. The folder is the
 memory: their profile, rubric and tracker live there as files, so every session starts

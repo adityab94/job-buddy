@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.1 (31 Oct 2026)
+
+- Privacy policy ([PRIVACY.md](plugins/job-buddy/PRIVACY.md)), linked from the plugin manifest
+  and README, for the Claude plugin directory.
+- The browser collector never sends cookies when it fetches job listings.
+
 ## 0.8.0 (31 Oct 2026)
 
 - **30-day learning plans.** "What should I learn?" now ends with a plan for the top gap: what

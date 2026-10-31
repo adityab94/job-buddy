@@ -42,7 +42,7 @@ Things to say: "set me up", "find me roles", "is this a good fit? <link>",
   it to find roles. It reads public job listings from: boards-api.greenhouse.io,
   api.lever.co, api.ashbyhq.com, api.smartrecruiters.com / jobs.smartrecruiters.com,
   apply.workable.com, remotive.com, remoteok.com, arbeitnow.com, builtindublin.ie and
-  jobs.ie. It sends only the search filters (company slugs, titles), never your data.
+  jobs.ie. It sends only the search filters (company slugs, titles), never your data or cookies.
 - **Shared Ireland feed**: a public list of job listings fetched from
   raw.githubusercontent.com/adityab94/job-buddy (no data is sent).
 - **Optional connectors** you add yourself (Indeed, Gmail, JobDataLake): see CONNECTORS.md.
@@ -50,6 +50,8 @@ Things to say: "set me up", "find me roles", "is this a good fit? <link>",
   your job list (company, role, score, status, dates), never your CV or notes.
 
 It never logs in to job sites, applies, or messages anyone on your behalf.
+
+Privacy: see [PRIVACY.md](PRIVACY.md).
 
 ---
 

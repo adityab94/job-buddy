@@ -43,8 +43,8 @@ window.JSA = (() => {
     return null;
   }
 
-  const j = async u => { const r = await fetch(u); if (!r.ok) throw new Error(r.status); return r.json(); };
-  const page = async u => { const r = await fetch(u); if (!r.ok) throw new Error(r.status);
+  const j = async u => { const r = await fetch(u, { credentials: 'omit' }); if (!r.ok) throw new Error(r.status); return r.json(); };
+  const page = async u => { const r = await fetch(u, { credentials: 'omit' }); if (!r.ok) throw new Error(r.status);
     const d = new DOMParser().parseFromString(await r.text(), 'text/html'); d.querySelectorAll('style,script').forEach(s => s.remove()); return d; };
   const ats = {
     greenhouse: async x => (await j(`https://boards-api.greenhouse.io/v1/boards/${x.s}/jobs`)).jobs.map(p =>
