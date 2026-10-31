@@ -1,233 +1,463 @@
 """Job Buddy dashboard: one self-contained HTML page built from the tracker and the gap plan.
 
 Called by `jb.py dashboard` (and after every tracker write). The page makes no network requests:
-all data is embedded, so it works offline and nothing leaves the user's computer.
+all data, the logo and the icons are embedded, so it works offline and nothing leaves the user's
+computer. Look: soft UI and frosted glass over a cream-to-sage gradient, from The Buddy Social's
+palette; light by default with a theme toggle.
 """
 import json
 
+from logo import LOGO_MASK_PNG_B64
+
 PAGE = r"""<!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Job search dashboard</title>
+<meta name="color-scheme" content="light dark">
+<title>Your job search · Job Buddy</title>
 <style>
+@property --wash-1 { syntax: '<color>'; inherits: true; initial-value: transparent; }
+@property --wash-2 { syntax: '<color>'; inherits: true; initial-value: transparent; }
+@property --wash-3 { syntax: '<color>'; inherits: true; initial-value: transparent; }
+@property --wash-4 { syntax: '<color>'; inherits: true; initial-value: transparent; }
+@property --ground { syntax: '<color>'; inherits: true; initial-value: transparent; }
+@property --orb { syntax: '<color>'; inherits: true; initial-value: transparent; }
 :root {
-  --bg: #f6f5f1; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6a65; --line: #e4e2db;
-  --accent: #2f5d50; --a: #2f6f4f; --b: #9a6b12; --c: #8a8883; --warn: #a3412a;
-  --a-bg: #e3f0e8; --b-bg: #f7ecd6; --c-bg: #efeeea; --warn-bg: #f8e4de;
+  --logo: url("data:image/png;base64,__LOGO__");
+  --radius: 22px; --radius-sm: 14px;
+  --ease: cubic-bezier(.16, 1, .3, 1);
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
-@media (prefers-color-scheme: dark) {
-  :root { --bg: #161615; --panel: #1f1f1d; --ink: #ecebe6; --muted: #a09e97; --line: #33322f;
-    --accent: #8cc4b0; --a: #8fd0ad; --b: #e2b862; --c: #a9a7a1; --warn: #ec9a83;
-    --a-bg: #1f3329; --b-bg: #3a2f17; --c-bg: #2a2a27; --warn-bg: #3d231c; }
+[data-theme="light"] {
+  --ground: #f7efda;
+  --wash-1: #fff0c4; --wash-2: #b3d18c; --wash-3: #efc47a; --wash-4: #cfe4bb; --orb: rgba(110, 150, 70, .5);
+  --ink: #1f2e17; --ink-2: #4f5d43; --ink-3: #5a654e;
+  --brand: #4c7031; --brand-ink: #3b5a25; --brand-soft: rgba(76, 112, 49, .12);
+  --glass: rgba(255, 252, 243, .46); --glass-strong: rgba(255, 253, 247, .9);
+  --glass-edge: rgba(255, 255, 255, .85); --glass-line: rgba(76, 112, 49, .14);
+  --shadow: 0 1px 0 rgba(255,255,255,.9) inset, 0 18px 40px -22px rgba(52, 77, 32, .38), 0 3px 10px -4px rgba(52, 77, 32, .14);
+  --shadow-lift: 0 1px 0 rgba(255,255,255,.95) inset, 0 26px 50px -24px rgba(52, 77, 32, .45), 0 6px 14px -6px rgba(52, 77, 32, .18);
+  --a: #2f6a2a; --a-bg: rgba(76, 140, 60, .16);
+  --b: #7a4f00; --b-bg: rgba(214, 150, 40, .2);
+  --c: #5f665a; --c-bg: rgba(95, 102, 90, .12);
+  --wait: #86500a; --wait-bg: rgba(224, 160, 50, .2);
+  --bar: rgba(76, 112, 49, .16);
+  --sheen: rgba(255, 255, 255, .85);
+  --rim-1: rgba(255, 255, 255, .95); --rim-2: rgba(255, 255, 255, .15); --rim-3: rgba(76, 112, 49, .14);
+  --next-ring: rgba(76, 112, 49, .12); --next-sheen: rgba(255, 255, 255, .9);
+  color-scheme: light;
+}
+[data-theme="dark"] {
+  --ground: #0e170d;
+  --wash-1: #24401c; --wash-2: #13260f; --wash-3: #3a3014; --wash-4: #1a3a28; --orb: rgba(150, 200, 100, .14);
+  --ink: #f4ead2; --ink-2: #c9c1a8; --ink-3: #a29c86;
+  --brand: #a9cd86; --brand-ink: #c3df9f; --brand-soft: rgba(169, 205, 134, .14);
+  --glass: rgba(30, 44, 26, .45); --glass-strong: rgba(52, 76, 44, .82);
+  --glass-edge: rgba(255, 246, 220, .1); --glass-line: rgba(255, 246, 220, .09);
+  --shadow: 0 1px 0 rgba(255,246,220,.07) inset, 0 20px 44px -22px rgba(0,0,0,.7), 0 3px 10px -4px rgba(0,0,0,.4);
+  --shadow-lift: 0 1px 0 rgba(255,246,220,.1) inset, 0 28px 54px -24px rgba(0,0,0,.8), 0 6px 14px -6px rgba(0,0,0,.5);
+  --a: #b4dc93; --a-bg: rgba(140, 200, 100, .16);
+  --b: #f0c374; --b-bg: rgba(240, 180, 80, .16);
+  --c: #bdb6a0; --c-bg: rgba(200, 190, 160, .12);
+  --wait: #f2b85e; --wait-bg: rgba(240, 170, 70, .16);
+  --bar: rgba(169, 205, 134, .16);
+  --sheen: rgba(255, 246, 220, .1);
+  --rim-1: rgba(255, 246, 220, .3); --rim-2: rgba(255, 246, 220, .04); --rim-3: rgba(169, 205, 134, .14);
+  --next-ring: rgba(169, 205, 134, .28); --next-sheen: rgba(255, 246, 220, .16);
+  color-scheme: dark;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink);
-  font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-main { max-width: 1180px; margin: 0 auto; padding: 28px 16px 64px; }
-header { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: end; justify-content: space-between; margin-bottom: 22px; }
-h1 { font-size: 26px; margin: 0; letter-spacing: -0.01em; }
-h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 34px 0 12px; font-weight: 600; }
-.sub { color: var(--muted); font-size: 13px; }
-.controls { display: flex; gap: 8px; flex-wrap: wrap; }
-select, input { font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); }
-.tiles { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
-@media (max-width: 900px) { .tiles { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 520px) { .tiles { grid-template-columns: repeat(2, 1fr); } h1 { font-size: 22px; } }
-.tile { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
-.tile .n { font-size: 30px; font-weight: 650; letter-spacing: -0.02em; }
-.tile .l { color: var(--muted); font-size: 13px; }
-.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 6px 16px; }
-.action { display: flex; gap: 12px; align-items: baseline; padding: 11px 0; border-bottom: 1px solid var(--line); }
-.action:last-child { border-bottom: 0; }
-.action .what { flex: 1; }
-.empty { color: var(--muted); padding: 12px 0; }
-.board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(185px, 1fr); gap: 12px; overflow-x: auto; padding-bottom: 6px; }
-.col { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px; min-height: 120px; }
-.col h3 { font-size: 13px; margin: 2px 4px 10px; display: flex; justify-content: space-between; color: var(--muted); font-weight: 600; }
-.card { border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; margin-bottom: 8px; background: var(--bg); }
-.card .co { font-weight: 600; }
-.card .ro { font-size: 13px; }
-.card .meta { display: flex; gap: 6px; align-items: center; margin-top: 6px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
-.chip { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 12px; font-weight: 600; }
+[hidden] { display: none !important; }
+html { background: var(--ground); color: var(--ink); -webkit-text-size-adjust: 100%; scrollbar-color: var(--bar) transparent;
+  transition: color .5s var(--ease); }
+body { margin: 0; min-height: 100vh; font-size: 15px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.sky { position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(60vw 55vh at 8% 0%, var(--wash-1), transparent 70%),
+    radial-gradient(55vw 60vh at 100% 18%, var(--wash-2), transparent 70%),
+    radial-gradient(60vw 50vh at 85% 100%, var(--wash-3), transparent 70%),
+    radial-gradient(50vw 45vh at 0% 95%, var(--wash-4), transparent 70%),
+    var(--ground);
+  transition: --wash-1 .7s var(--ease), --wash-2 .7s var(--ease), --wash-3 .7s var(--ease), --wash-4 .7s var(--ease),
+    --ground .7s var(--ease), --orb .7s var(--ease); }
+.sky::before, .sky::after { content: ""; position: absolute; border-radius: 50%; filter: blur(60px); background: var(--orb); }
+.sky::before { width: 36vw; height: 30vw; left: 30%; top: 4%; }
+.sky::after { width: 30vw; height: 26vw; left: 2%; top: 58%; background: var(--wash-3); opacity: .7; }
+::selection { background: var(--brand); color: var(--ground); }
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 10px; }
+a { color: var(--brand-ink); text-underline-offset: 3px; }
+main { max-width: 1240px; margin: 0 auto; padding: 28px 24px 40px; }
+
+.glass { position: relative; isolation: isolate; background: var(--glass); border: 1px solid var(--glass-edge); border-radius: var(--radius);
+  box-shadow: var(--shadow); -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%); }
+.glass::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
+  background: linear-gradient(170deg, var(--sheen) 0%, transparent 42%); }
+.glass::after { content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(170deg, var(--rim-1), var(--rim-2) 40%, var(--rim-3));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+.glass, .icon-btn { transition: background-color .5s var(--ease), border-color .5s var(--ease), color .5s var(--ease),
+  transform .22s var(--ease), box-shadow .22s var(--ease); }
+@supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+  .glass { background: var(--glass-strong); }
+}
+
+/* Header */
+header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 18px 28px; align-items: center; margin-bottom: 26px; }
+.mark { width: 112px; aspect-ratio: 336 / 200; background: var(--brand-ink);
+  -webkit-mask: var(--logo) center / contain no-repeat; mask: var(--logo) center / contain no-repeat; }
+.title { border-left: 1px solid var(--glass-line); padding-left: 26px; min-width: 0; }
+h1 { margin: 0; font-size: 28px; line-height: 1.15; font-weight: 680; letter-spacing: -0.02em; }
+.status { margin: 6px 0 0; color: var(--ink-2); max-width: 70ch; text-wrap: pretty; }
+.tools { display: flex; gap: 10px; align-items: center; }
+.field { display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 14px; border-radius: 999px; }
+.field svg { flex: none; color: var(--ink-3); }
+.field input, .field select { border: 0; background: transparent; color: var(--ink); font: inherit; outline: none; min-width: 0; }
+.field input { width: 190px; caret-color: var(--brand); }
+.field input::placeholder { color: var(--ink-3); }
+.field:focus-within { outline: 2px solid var(--brand); outline-offset: 2px; }
+.icon-btn { width: 42px; height: 42px; border-radius: 999px; display: grid; place-items: center; cursor: pointer;
+  color: var(--ink); border: 1px solid var(--glass-edge); }
+.icon-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-lift); }
+.icon-btn:active { transform: translateY(0); box-shadow: inset 0 2px 6px rgba(40, 60, 25, .18); }
+.icon-btn .moon, [data-theme="dark"] .icon-btn .sun { display: none; }
+[data-theme="dark"] .icon-btn .moon { display: block; }
+
+/* Lead row */
+.lead { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(280px, 1fr); gap: 20px; align-items: start; }
+.pane { padding: 22px 24px; }
+.pane-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+h2 { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
+.pane-head .hint { color: var(--ink-3); font-size: 13px; }
+.next { background: var(--glass-strong); box-shadow: var(--shadow), 0 0 0 1px var(--next-ring); }
+.next::before { background: linear-gradient(170deg, var(--next-sheen) 0%, transparent 55%); }
+.todo { list-style: none; margin: 0; padding: 0; }
+.todo li { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; padding: 14px 0; border-top: 1px solid var(--glass-line); }
+.todo li:first-child { border-top: 0; }
+.todo .who { font-weight: 620; }
+.todo .role { color: var(--ink-2); }
+.todo .what { color: var(--ink-2); font-size: 14px; margin-top: 2px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--brand); box-shadow: 0 0 0 5px var(--brand-soft); }
+.dot.wait { background: var(--wait); box-shadow: 0 0 0 5px var(--wait-bg); }
+.dot.live { background: var(--a); box-shadow: 0 0 0 5px var(--a-bg); }
+.calm { padding: 18px 0 8px; color: var(--ink-2); margin: 0; }
+
+.counts { display: grid; grid-template-columns: 1fr 1fr; }
+.count { padding: 16px 4px 14px; border-top: 1px solid var(--glass-line); }
+.count:nth-child(-n+2) { border-top: 0; padding-top: 6px; }
+.count:nth-child(odd) { padding-right: 16px; border-right: 1px solid var(--glass-line); }
+.count:nth-child(even) { padding-left: 18px; }
+.count .n { font-size: 30px; font-weight: 680; letter-spacing: -0.03em; line-height: 1.1; }
+.count .l { color: var(--ink-2); font-size: 13.5px; }
+@media (min-width: 981px) {
+  .lead { align-items: stretch; }
+  .lead > .pane:last-child { display: flex; flex-direction: column; }
+  .counts { flex: 1; grid-auto-rows: 1fr; margin-top: 8px; }
+  .count, .count:nth-child(-n+2) { padding-top: 14px; }
+}
+
+/* Pipeline */
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 40px 2px 14px; }
+.section-head .hint { color: var(--ink-3); font-size: 13px; }
+.lanes { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(168px, 1fr); gap: 14px; overflow-x: auto;
+  padding: 4px 4px 14px; margin: 0 -4px; scroll-snap-type: x proximity; scrollbar-width: thin; scrollbar-color: var(--bar) transparent; }
+.lanes::-webkit-scrollbar { height: 8px; } .lanes::-webkit-scrollbar-thumb { background: var(--bar); border-radius: 8px; }
+.lane { scroll-snap-align: start; min-width: 0; }
+.lane-head { display: flex; justify-content: space-between; align-items: center; padding: 0 6px 10px; color: var(--ink-2); font-size: 13.5px; font-weight: 600; }
+.lane-head .num { min-width: 26px; height: 22px; padding: 0 8px; border-radius: 999px; display: inline-grid; place-items: center;
+  background: var(--brand-soft); color: var(--brand-ink); font-size: 12px; }
+.job { padding: 13px 14px; border-radius: var(--radius-sm); margin-bottom: 10px; }
+.job:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); }
+.job .co { font-weight: 640; }
+.job .ro { color: var(--ink-2); font-size: 13.5px; line-height: 1.35; margin-top: 1px; }
+.job .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; font-size: 12.5px; color: var(--ink-3); }
+.job .meta a { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; }
+.lane-empty { padding: 14px; border-radius: var(--radius-sm); border: 1.5px dashed var(--glass-line); color: var(--ink-3); font-size: 13px; text-align: center; }
+
+.chip { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 12px; font-weight: 650; white-space: nowrap; }
 .t-A { background: var(--a-bg); color: var(--a); } .t-B { background: var(--b-bg); color: var(--b); }
-.t-C, .t- { background: var(--c-bg); color: var(--c); } .stale { background: var(--warn-bg); color: var(--warn); }
-a { color: var(--accent); }
-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--line); }
-th { color: var(--muted); font-weight: 600; font-size: 13px; }
-td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-tr:last-child td { border-bottom: 0; }
-.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
-.gap { padding: 12px 0; border-bottom: 1px solid var(--line); }
-.gap:last-child { border-bottom: 0; }
-.gap .head { display: flex; justify-content: space-between; gap: 12px; }
-.gap ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
-.note { color: var(--muted); font-size: 13px; margin-top: 8px; }
-details summary { cursor: pointer; color: var(--muted); }
-footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
+.t-C, .t-x { background: var(--c-bg); color: var(--c); }
+.quiet { background: var(--wait-bg); color: var(--wait); }
+
+/* Insight row */
+.insight { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 40px; align-items: start; }
+.tier-row { display: grid; grid-template-columns: 64px 1fr auto; gap: 14px; align-items: center; padding: 14px 0; border-top: 1px solid var(--glass-line); }
+.pane-head + .tier-row { border-top: 0; }
+.tier-row .detail { font-size: 13.5px; color: var(--ink-2); }
+.track { height: 8px; border-radius: 99px; background: var(--bar); margin-top: 7px; overflow: hidden; }
+.track i { display: block; height: 100%; border-radius: inherit; background: var(--brand); transition: width .6s var(--ease); }
+.rate { font-size: 20px; font-weight: 680; letter-spacing: -0.02em; min-width: 54px; text-align: right; }
+.verdict { margin: 12px 0 0; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--brand-soft); color: var(--ink); font-size: 14px; }
+.verdict.warn { background: var(--wait-bg); }
+.gap { padding: 14px 0; border-top: 1px solid var(--glass-line); }
+.pane-head + .gap { border-top: 0; }
+.gap .skill { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.gap .skill b { font-size: 18px; font-weight: 680; letter-spacing: -0.01em; }
+.gap .skill span { color: var(--ink-3); font-size: 13px; }
+.gap .why { color: var(--ink-2); font-size: 14px; margin: 3px 0 8px; }
+.lift { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 6px 0; font-size: 14px; }
+.lift .jump { display: inline-flex; gap: 6px; align-items: center; color: var(--ink-3); font-size: 13px; }
+.aside { color: var(--ink-3); font-size: 13px; margin: 10px 0 0; }
+
+/* Closed */
+.closed { margin-top: 40px; padding: 4px 24px; }
+.closed summary { cursor: pointer; padding: 14px 0; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--ink-2); }
+.closed summary::-webkit-details-marker { display: none; }
+.closed summary b { color: var(--ink); font-weight: 650; }
+.closed summary svg { transition: transform .25s var(--ease); flex: none; }
+.closed[open] summary svg { transform: rotate(180deg); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 12px; }
+th, td { text-align: left; padding: 10px 8px; border-top: 1px solid var(--glass-line); }
+th { color: var(--ink-3); font-weight: 600; font-size: 12.5px; }
+
+footer { margin-top: 48px; display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: center; justify-content: space-between;
+  padding-top: 22px; border-top: 1px solid var(--glass-line); color: var(--ink-3); font-size: 13px; }
+.sign { display: flex; align-items: center; gap: 14px; color: var(--ink-2); }
+.sign .mark { width: 54px; }
+.sign b { color: var(--ink); font-weight: 650; }
+
+.empty-state { padding: 36px 28px; text-align: center; }
+.empty-state h2 { font-size: 20px; margin-bottom: 6px; }
+.empty-state p { color: var(--ink-2); margin: 0 auto; max-width: 52ch; }
+
+@media (max-width: 980px) {
+  .lead, .insight { grid-template-columns: 1fr; }
+  header { grid-template-columns: auto 1fr; }
+  .tools { grid-column: 1 / -1; }
+  .field.search { flex: 1; } .field input { width: 100%; }
+}
+@media (max-width: 560px) {
+  main { padding: 18px 16px 32px; }
+  header { grid-template-columns: 1fr; gap: 14px; }
+  .title { border-left: 0; padding-left: 0; }
+  .mark { width: 92px; }
+  h1 { font-size: 24px; }
+  .pane { padding: 18px; }
+  .lanes { grid-auto-columns: 78%; }
+  .count .n { font-size: 26px; }
+  .pane-head { flex-wrap: wrap; row-gap: 2px; }
+  .pane-head .hint { flex-basis: 100%; }
+  .todo li { grid-template-columns: auto 1fr; }
+  .todo li > .chip { grid-column: 2; justify-self: start; margin-top: -4px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; }
+}
 </style>
 </head>
 <body>
+<div class="sky" aria-hidden="true"></div>
 <main>
 <header>
-  <div>
+  <div class="mark" role="img" aria-label="The Buddy Social"></div>
+  <div class="title">
     <h1>Your job search</h1>
-    <div class="sub" id="updated"></div>
+    <p class="status" id="status"></p>
   </div>
-  <div class="controls">
-    <select id="track" aria-label="Track"></select>
-    <input id="q" type="search" placeholder="Search company or role" aria-label="Search">
+  <div class="tools">
+    <label class="field glass search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="Search company or role" aria-label="Search company or role">
+    </label>
+    <label class="field glass" id="track-field" hidden>
+      <select id="track" aria-label="Track"></select>
+    </label>
+    <button class="icon-btn glass" id="theme" type="button" aria-label="Switch to dark mode">
+      <svg class="sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></svg>
+      <svg class="moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg>
+    </button>
   </div>
 </header>
 
-<section class="tiles" id="tiles"></section>
+<div id="app"></div>
 
-<h2>Needs your attention</h2>
-<section class="panel" id="actions"></section>
-
-<h2>Pipeline</h2>
-<section class="board" id="board"></section>
-
-<div class="two">
-  <section>
-    <h2>Does your rubric work?</h2>
-    <div class="panel"><table id="funnel"></table>
-      <p class="note" id="funnel-note"></p></div>
-  </section>
-  <section>
-    <h2>What's holding you back</h2>
-    <div class="panel" id="gaps"></div>
-  </section>
-</div>
-
-<h2>Closed</h2>
-<section class="panel" id="closed"></section>
-
-<footer>Built by Job Buddy from tracker.xlsx in this folder. Nothing on this page is sent anywhere.
-Ask Claude to "refresh my dashboard" after editing the tracker by hand.</footer>
+<footer>
+  <div class="sign">
+    <div class="mark" role="img" aria-label="The Buddy Social"></div>
+    <span>Created by <b>Aditya Bhatnagar</b> · The Buddy Social</span>
+  </div>
+  <span>Made by Job Buddy from tracker.xlsx in this folder. Nothing here is sent anywhere.</span>
+</footer>
 </main>
 
 <script id="data" type="application/json">__DATA__</script>
 <script>
 const D = JSON.parse(document.getElementById('data').textContent);
-const OPEN = ['Found', 'Applied', 'Acknowledged', 'Assessment', 'Interview', 'Offer'];
+const STAGES = ['Found', 'Applied', 'Acknowledged', 'Assessment', 'Interview', 'Offer'];
 const CLOSED = ['Rejected', 'Withdrawn', 'Ghosted'];
 const today = new Date(D.generated + 'T12:00:00');
-const el = (tag, attrs = {}, ...kids) => {
+const h = (tag, attrs = {}, ...kids) => {
   const e = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs)) k === 'class' ? e.className = v : e.setAttribute(k, v);
-  for (const k of kids) if (k != null) e.append(k.nodeType ? k : String(k));
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === 'class') e.className = v; else if (k === 'style') e.style.cssText = v; else e.setAttribute(k, v);
+  }
+  for (const k of kids.flat()) if (k != null && k !== false) e.append(k.nodeType ? k : String(k));
   return e;
 };
+const svg = (paths, size = 14) => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  for (const [k, v] of Object.entries({ width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
+    'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' })) s.setAttribute(k, v);
+  s.innerHTML = paths; return s; };
+const ICON_OUT = '<path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/>';
+const ICON_ARROW = '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>';
+const ICON_CHEVRON = '<path d="m6 9 6 6 6-6"/>';
 const days = d => d ? Math.round((today - new Date(d + 'T12:00:00')) / 864e5) : null;
-const applied = r => r.Status && r.Status !== 'Found';
+const status = r => r.Status || 'Found';
+const applied = r => status(r) !== 'Found';
 const callback = r => ['Assessment', 'Interview', 'Offer'].includes(r.Status) ||
   (r.Status === 'Rejected' && ['Assessment', 'Interview', 'Final'].includes(r['Rejected At']));
+const quietFor = r => ['Applied', 'Acknowledged'].includes(r.Status) && days(r['Last Update']) >= 14 ? days(r['Last Update']) : 0;
 const pct = (a, b) => b ? Math.round(100 * a / b) + '%' : '–';
-const tierChip = t => el('span', { class: 'chip t-' + (t || '') }, t ? 'Tier ' + t : 'Unscored');
+const tier = t => h('span', { class: 'chip t-' + (t || 'x') }, t ? 'Tier ' + t : 'Not scored');
 const safeUrl = u => /^https?:\/\//i.test(u || '') ? u : null;
+const plural = (n, one, many = one + 's') => `${n} ${n === 1 ? one : many}`;
+const dateLong = d => d.toLocaleDateString(undefined, { day: 'numeric', month: 'long' });
 
-document.getElementById('updated').textContent =
-  `Updated ${today.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}`;
+// Theme: light unless the user switched it; remembered in this browser only.
+const root = document.documentElement, themeBtn = document.getElementById('theme');
+const setTheme = t => { root.dataset.theme = t;
+  themeBtn.setAttribute('aria-label', t === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'); };
+try { const saved = localStorage.getItem('jb-theme'); if (saved === 'dark' || saved === 'light') setTheme(saved); } catch (e) {}
+themeBtn.onclick = () => { const t = root.dataset.theme === 'dark' ? 'light' : 'dark'; setTheme(t);
+  try { localStorage.setItem('jb-theme', t); } catch (e) {} };
+
 const tracks = [...new Set(D.rows.map(r => r.Track).filter(Boolean))];
 const sel = document.getElementById('track');
-sel.append(el('option', { value: '' }, 'All tracks'), ...tracks.map(t => el('option', { value: t }, t)));
-if (tracks.length < 2) sel.hidden = true;
+sel.append(h('option', { value: '' }, 'All tracks'), ...tracks.map(t => h('option', { value: t }, t)));
+document.getElementById('track-field').hidden = tracks.length < 2;
+const q = document.getElementById('q');
 
-function rows() {
-  const t = sel.value, q = document.getElementById('q').value.trim().toLowerCase();
-  return D.rows.filter(r => (!t || r.Track === t) &&
-    (!q || `${r.Company} ${r.Role}`.toLowerCase().includes(q)));
+function visible() {
+  const t = sel.value, s = q.value.trim().toLowerCase();
+  return D.rows.filter(r => (!t || r.Track === t) && (!s || `${r.Company} ${r.Role}`.toLowerCase().includes(s)));
+}
+
+function todos(R) {
+  const out = [];
+  for (const r of R) {
+    if (CLOSED.includes(r.Status)) continue;
+    const na = r['Next Action'] && r['Next Action'] !== 'None' ? r['Next Action'] : '';
+    if (['Assessment', 'Interview', 'Offer'].includes(r.Status)) out.push([0, 'live', r, na || `${r.Status} stage: get ready`]);
+    else if (na) out.push([1, '', r, na]);
+    else if (quietFor(r)) out.push([2, 'wait', r, `No reply for ${quietFor(r)} days. Follow up, or mark it as ghosted.`]);
+    else if (status(r) === 'Found' && r.Tier === 'A' && r.Materials !== 'Yes') out.push([3, '', r, 'Strong match. Tailor your CV and apply.']);
+  }
+  return out.sort((a, b) => a[0] - b[0]);
 }
 
 function render() {
-  const R = rows();
+  const R = visible(), app = document.getElementById('app');
   const ap = R.filter(applied), cb = R.filter(callback);
   const live = R.filter(r => ['Assessment', 'Interview'].includes(r.Status));
-  const tiles = [
-    [R.length, 'roles tracked'], [R.filter(r => r.Status === 'Found' && r.Tier === 'A').length, 'Tier A to apply for'],
-    [ap.length, 'applied'], [pct(cb.length, ap.length), 'callback rate'],
-    [live.length, 'in progress'], [R.filter(r => r.Status === 'Offer').length, 'offers']];
-  document.getElementById('tiles').replaceChildren(...tiles.map(([n, l]) =>
-    el('div', { class: 'tile' }, el('div', { class: 'n' }, n), el('div', { class: 'l' }, l))));
+  const offers = R.filter(r => r.Status === 'Offer');
+  const T = todos(R);
 
-  // Needs attention: next actions on open roles, live stages, applications quiet for 14+ days
-  const acts = [];
-  for (const r of R) {
-    if (!OPEN.includes(r.Status || 'Found')) continue;
-    const quiet = ['Applied', 'Acknowledged'].includes(r.Status) && days(r['Last Update']) >= 14;
-    if (r['Next Action'] && r['Next Action'] !== 'None') acts.push([0, r, r['Next Action']]);
-    else if (['Assessment', 'Interview', 'Offer'].includes(r.Status)) acts.push([1, r, `${r.Status} stage: prepare`]);
-    else if (quiet) acts.push([2, r, `No reply for ${days(r['Last Update'])} days: follow up or mark as ghosted`]);
-    else if (r.Status === 'Found' && r.Tier === 'A' && r.Materials !== 'Yes') acts.push([3, r, 'Tier A: tailor your CV and apply']);
+  document.getElementById('status').textContent = !D.rows.length
+    ? `Nothing tracked yet. Updated ${dateLong(today)}.`
+    : (ap.length ? `${plural(ap.length, 'application')} out` : 'No applications yet') +
+      (live.length ? `, ${live.length} in progress` : '') + (offers.length ? `, ${plural(offers.length, 'offer')}` : '') +
+      `. ${T.length ? plural(T.length, 'thing needs', 'things need') + ' you.' : 'Nothing is waiting on you.'}` +
+      ` Updated ${dateLong(today)}.`;
+
+  if (!D.rows.length) {
+    app.replaceChildren(h('section', { class: 'glass empty-state' }, h('h2', {}, 'Your dashboard fills in as you go'),
+      h('p', {}, 'Ask Claude to “find me roles” or paste a job link. Every role Job Buddy scores lands here, with what to do next.')));
+    return;
   }
-  acts.sort((a, b) => a[0] - b[0]);
-  const ab = document.getElementById('actions');
-  ab.replaceChildren(...(acts.length ? acts.slice(0, 12).map(([p, r, what]) => el('div', { class: 'action' },
-    tierChip(r.Tier), el('div', { class: 'what' }, el('strong', {}, r.Company), ' · ', r.Role,
-      el('div', { class: 'sub' }, what)))) : [el('div', { class: 'empty' }, 'Nothing waiting on you.')]));
 
-  // Pipeline board
-  const board = document.getElementById('board');
-  board.replaceChildren(...OPEN.map(s => {
-    const items = R.filter(r => (r.Status || 'Found') === s)
-      .sort((a, b) => (b['Fit Score'] || 0) - (a['Fit Score'] || 0));
-    return el('div', { class: 'col' }, el('h3', {}, el('span', {}, s), el('span', {}, items.length)),
-      ...items.map(r => {
-        const quiet = ['Applied', 'Acknowledged'].includes(s) && days(r['Last Update']) >= 14;
-        const url = safeUrl(r['Job URL']);
-        return el('div', { class: 'card' },
-          el('div', { class: 'co' }, r.Company), el('div', { class: 'ro' }, r.Role),
-          el('div', { class: 'meta' }, tierChip(r.Tier), r['Fit Score'] != null ? r['Fit Score'] : null,
-            quiet ? el('span', { class: 'chip stale' }, `quiet ${days(r['Last Update'])}d`) : null,
-            url ? el('a', { href: url, target: '_blank', rel: 'noopener noreferrer' }, 'ad') : null));
-      }),
-      items.length ? null : el('div', { class: 'empty' }, '—'));
+  // Lead row: next up + counts
+  const next = h('section', { class: 'glass pane next', 'aria-labelledby': 'next-h' },
+    h('div', { class: 'pane-head' }, h('h2', { id: 'next-h' }, 'Next up'),
+      T.length > 8 ? h('span', { class: 'hint' }, `showing 8 of ${T.length}`) : null),
+    T.length ? h('ul', { class: 'todo' }, T.slice(0, 8).map(([, kind, r, what]) =>
+      h('li', {}, h('span', { class: 'dot ' + kind }),
+        h('div', {}, h('div', {}, h('span', { class: 'who' }, r.Company), h('span', { class: 'role' }, ' · ' + r.Role)),
+          h('div', { class: 'what' }, what)),
+        tier(r.Tier))))
+      : h('p', { class: 'calm' }, 'Nothing is waiting on you right now. Ask Claude to “find me roles” for fresh matches.'));
+  const counts = h('section', { class: 'glass pane', 'aria-labelledby': 'counts-h' },
+    h('div', { class: 'pane-head' }, h('h2', { id: 'counts-h' }, 'At a glance')),
+    h('div', { class: 'counts' }, [
+      [R.length, 'roles tracked'], [ap.length, 'applications sent'],
+      [pct(cb.length, ap.length), 'heard back with a next step'], [offers.length, offers.length === 1 ? 'offer' : 'offers']]
+      .map(([n, l]) => h('div', { class: 'count' }, h('div', { class: 'n' }, n), h('div', { class: 'l' }, l)))));
+
+  // Pipeline
+  const lanes = h('div', { class: 'lanes' }, STAGES.map(s => {
+    const items = R.filter(r => status(r) === s).sort((a, b) => (b['Fit Score'] || 0) - (a['Fit Score'] || 0));
+    return h('section', { class: 'lane', 'aria-label': `${s}: ${items.length}` },
+      h('div', { class: 'lane-head' }, h('span', {}, s), h('span', { class: 'num' }, items.length)),
+      items.length ? items.map(r => {
+        const url = safeUrl(r['Job URL']), qd = quietFor(r);
+        return h('article', { class: 'glass job' },
+          h('div', { class: 'co' }, r.Company), h('div', { class: 'ro' }, r.Role),
+          h('div', { class: 'meta' }, tier(r.Tier), r['Fit Score'] != null ? h('span', {}, r['Fit Score']) : null,
+            qd ? h('span', { class: 'chip quiet' }, `quiet ${qd}d`) : null,
+            url ? h('a', { href: url, target: '_blank', rel: 'noopener noreferrer', 'aria-label': `Open the ${r.Company} job ad` }, 'View ad', svg(ICON_OUT, 12)) : null));
+      }) : h('div', { class: 'lane-empty' }, 'None yet'));
   }));
 
-  // Funnel by tier
-  const ft = document.getElementById('funnel');
-  const line = t => { const x = R.filter(r => (r.Tier || '') === t), a = x.filter(applied), c = x.filter(callback);
-    return [t || '–', x.length, a.length, c.length, pct(c.length, a.length), a.length && c.length / a.length]; };
-  const fl = ['A', 'B', 'C'].map(line);
-  ft.replaceChildren(el('tr', {}, ...['Tier', 'Found', 'Applied', 'Callbacks', 'Rate'].map((h, i) =>
-    el('th', { class: i ? 'num' : '' }, h))), ...fl.map(f => el('tr', {}, el('td', {}, tierChip(f[0])),
-      ...f.slice(1, 5).map(v => el('td', { class: 'num' }, v)))));
-  const [A, B] = [fl[0], fl[1]];
-  document.getElementById('funnel-note').textContent = A[2] + B[2] < 10
-    ? 'Too few applications yet to judge the rubric. Tier A should end up converting better than Tier B.'
-    : (A[5] >= B[5] ? 'Tier A is converting at least as well as Tier B: your rubric is doing its job.'
-      : 'Tier B is converting better than Tier A. Ask Claude for a search review: the rubric may need a change.');
+  // Rubric check
+  const rows = ['A', 'B', 'C'].map(t => { const x = R.filter(r => r.Tier === t), a = x.filter(applied), c = x.filter(callback);
+    return { t, found: x.length, applied: a.length, cb: c.length, rate: a.length ? c.length / a.length : null }; });
+  const [A, B] = rows;
+  const judged = A.applied + B.applied >= 10;
+  const working = !judged || (A.rate ?? 0) >= (B.rate ?? 0);
+  const rubric = h('section', { class: 'glass pane', 'aria-labelledby': 'rubric-h' },
+    h('div', { class: 'pane-head' }, h('h2', { id: 'rubric-h' }, 'Is your scoring working?'),
+      h('span', { class: 'hint' }, 'callbacks per application')),
+    rows.map(x => h('div', { class: 'tier-row' }, tier(x.t),
+      h('div', {}, h('div', { class: 'detail' }, `${plural(x.applied, 'application')} · ${plural(x.cb, 'callback')} · ${x.found} found`),
+        h('div', { class: 'track' }, h('i', { style: `width:${x.rate == null ? 0 : Math.round(x.rate * 100)}%` }))),
+      h('span', { class: 'rate' }, x.rate == null ? '–' : Math.round(x.rate * 100) + '%'))),
+    h('p', { class: 'verdict' + (working ? '' : ' warn') }, !judged
+      ? `Early days: ${plural(A.applied + B.applied, 'Tier A or B application')} so far. Once there are 10, this shows whether Tier A really converts better.`
+      : working ? 'Tier A is converting at least as well as Tier B. Your scoring is doing its job.'
+        : 'Tier B is converting better than Tier A. Ask Claude for a search review: your scoring may need a change.'));
 
-  // Gap plan (whole search, not filtered)
-  const g = document.getElementById('gaps');
+  // Gap plan
   const top = (D.gaps.skills || []).slice(0, 3);
-  g.replaceChildren(...(top.length ? top.map(s => el('div', { class: 'gap' },
-    el('div', { class: 'head' }, el('strong', {}, s.skill),
-      el('span', { class: 'sub' }, `in ${s.roles_with_gap} role${s.roles_with_gap === 1 ? '' : 's'}`)),
-    s.tier_upgrades.length ? el('div', { class: 'sub' }, `Closing it moves ${s.tier_upgrades.length} open role${s.tier_upgrades.length === 1 ? '' : 's'} up a tier:`) :
-      el('div', { class: 'sub' }, `Worth about +${s.avg_points_if_closed} points per role; no tier changes yet.`),
-    s.tier_upgrades.length ? el('ul', {}, ...s.tier_upgrades.slice(0, 4).map(u => el('li', {}, u.replace(' -> ', ' → ')))) : null))
-    : [el('div', { class: 'empty' }, 'Score a few roles and your biggest gaps will show up here.')]),
-    ...(D.gaps.notes || []).map(n => el('p', { class: 'note' }, n[0].toUpperCase() + n.slice(1) + '.')),
-    el('p', { class: 'note' }, 'Ask Claude "what should I learn?" for a plan.'));
+  const lift = u => { const m = u.match(/^(.*): (\d+) ([A-Z]) -> (\d+) ([A-Z])$/);
+    if (!m) return h('div', { class: 'lift' }, u);
+    return h('div', { class: 'lift' }, h('span', {}, m[1].replace(/, /, ' · ')),
+      h('span', { class: 'jump', 'aria-label': `from ${m[2]}, tier ${m[3]}, to ${m[4]}, tier ${m[5]}` },
+        m[2], tier(m[3]), svg(ICON_ARROW, 13), m[4], tier(m[5]))); };
+  const gaps = h('section', { class: 'glass pane', 'aria-labelledby': 'gaps-h' },
+    h('div', { class: 'pane-head' }, h('h2', { id: 'gaps-h' }, 'What to learn next')),
+    top.length ? top.map(s => h('div', { class: 'gap' },
+      h('div', { class: 'skill' }, h('b', {}, s.skill), h('span', {}, `missing in ${plural(s.roles_with_gap, 'role')}`)),
+      h('div', { class: 'why' }, s.tier_upgrades.length
+        ? `Having it would move ${plural(s.tier_upgrades.length, 'open role')} up a tier:`
+        : `Worth about ${s.avg_points_if_closed} points per role, with no tier changes yet.`),
+      s.tier_upgrades.slice(0, 3).map(lift)))
+      : h('p', { class: 'calm' }, 'Score a few roles and the skills holding you back will show up here.'),
+    (D.gaps.notes || []).map(n => h('p', { class: 'aside' }, n[0].toUpperCase() + n.slice(1) + '.')),
+    top.length ? h('p', { class: 'aside' }, 'Ask Claude “what should I learn?” for a plan to close the top one.') : null);
 
   // Closed
   const closed = R.filter(r => CLOSED.includes(r.Status));
-  const stage = {};
-  closed.filter(r => r.Status === 'Rejected').forEach(r => stage[r['Rejected At'] || 'Unknown'] = (stage[r['Rejected At'] || 'Unknown'] || 0) + 1);
-  const cs = document.getElementById('closed');
-  cs.replaceChildren(closed.length ? el('details', {}, el('summary', {},
-    `${closed.length} closed · rejected at ` + (Object.entries(stage).map(([k, v]) => `${k} ${v}`).join(', ') || '–')),
-    el('table', {}, el('tr', {}, ...['Company', 'Role', 'Status', 'Stage', 'Tier'].map(h => el('th', {}, h))),
-      ...closed.map(r => el('tr', {}, el('td', {}, r.Company), el('td', {}, r.Role), el('td', {}, r.Status),
-        el('td', {}, r['Rejected At'] || ''), el('td', {}, tierChip(r.Tier))))))
-    : el('div', { class: 'empty' }, 'Nothing closed yet.'));
+  const stages = {};
+  closed.filter(r => r.Status === 'Rejected').forEach(r => { const k = r['Rejected At'] || 'unknown stage'; stages[k] = (stages[k] || 0) + 1; });
+  const closedEl = closed.length ? h('details', { class: 'glass closed' },
+    h('summary', {}, h('span', {}, h('b', {}, plural(closed.length, 'closed role')),
+      Object.keys(stages).length ? ' · rejected at ' + Object.entries(stages).map(([k, v]) => `${k.toLowerCase()} (${v})`).join(', ') : ''),
+      svg(ICON_CHEVRON, 18)),
+    h('table', {}, h('thead', {}, h('tr', {}, ['Company', 'Role', 'Outcome', 'Tier'].map(c => h('th', { scope: 'col' }, c)))),
+      h('tbody', {}, closed.map(r => h('tr', {}, h('td', {}, r.Company), h('td', {}, r.Role),
+        h('td', {}, r.Status + (r['Rejected At'] ? ` at ${r['Rejected At'].toLowerCase()}` : '')), h('td', {}, tier(r.Tier)))))))
+    : null;
+
+  app.replaceChildren(
+    h('div', { class: 'lead' }, next, counts),
+    h('div', { class: 'section-head' }, h('h2', {}, 'Pipeline'), h('span', { class: 'hint' }, 'best match first in each stage')),
+    lanes,
+    h('div', { class: 'insight' }, rubric, gaps),
+    closedEl);
 }
 sel.onchange = render;
-document.getElementById('q').oninput = render;
+q.oninput = render;
 render();
 </script>
 </body>
@@ -242,5 +472,4 @@ def render(rows, gaps, generated):
     # Embedded as JSON inside <script type="application/json">; escaping "<" stops any text in
     # the tracker (a job title, a note) from closing the tag and running as code.
     blob = json.dumps(data, ensure_ascii=False, default=str).replace("<", "\\u003c")
-    return PAGE.replace("__DATA__", blob)
-
+    return PAGE.replace("__LOGO__", LOGO_MASK_PNG_B64).replace("__DATA__", blob)

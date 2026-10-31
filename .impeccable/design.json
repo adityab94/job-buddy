@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-31T10:40:00Z",
+  "title": "Design System: Job Buddy dashboard",
+  "extensions": {
+    "colorMeta": {
+      "forest": { "role": "primary", "displayName": "Forest (logo green)", "canonical": "#4c7031" },
+      "cream-ground": { "role": "neutral", "displayName": "Cream Ground", "canonical": "#f7efda" },
+      "wash-sage": { "role": "neutral", "displayName": "Sage Wash", "canonical": "#b3d18c" },
+      "wash-apricot": { "role": "neutral", "displayName": "Apricot Wash", "canonical": "#efc47a" },
+      "waiting": { "role": "tertiary", "displayName": "Waiting Amber", "canonical": "#86500a" },
+      "night-ground": { "role": "neutral", "displayName": "Night Greenhouse", "canonical": "#0e170d" }
+    },
+    "typographyMeta": {
+      "title": { "displayName": "Title", "purpose": "The page title only." },
+      "figure": { "displayName": "Figure", "purpose": "Counts and rates, tabular numerals." }
+    },
+    "shadows": [
+      { "name": "pane", "value": "0 1px 0 rgba(255,255,255,.9) inset, 0 18px 40px -22px rgba(52,77,32,.38), 0 3px 10px -4px rgba(52,77,32,.14)", "purpose": "Resting glass pane (light)." },
+      { "name": "pane-lift", "value": "0 1px 0 rgba(255,255,255,.95) inset, 0 26px 50px -24px rgba(52,77,32,.45), 0 6px 14px -6px rgba(52,77,32,.18)", "purpose": "Hovered job card or button." },
+      { "name": "glass", "value": "backdrop-filter: blur(24px) saturate(160%)", "purpose": "Frost on every pane; strong fill as fallback." }
+    ],
+    "motion": [
+      { "name": "ease-out-expo", "value": "cubic-bezier(.16, 1, .3, 1)", "purpose": "All transitions." },
+      { "name": "theme-crossfade", "value": "0.7s on registered --wash-1..4, --ground, --orb", "purpose": "Light/dark switch." },
+      { "name": "lift", "value": "0.22s transform + box-shadow", "purpose": "Card and button hover." }
+    ],
+    "breakpoints": [
+      { "name": "stack", "value": "980px" },
+      { "name": "phone", "value": "560px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Glass pane",
+      "kind": "card",
+      "refersTo": "pane",
+      "description": "Every panel on the dashboard: translucent fill, blur, sheen and gradient rim.",
+      "html": "<section class=\"ds-glass\"><h2>Next up</h2><p>Rippling · Senior GTM Ops Manager</p></section>",
+      "css": ".ds-glass{position:relative;padding:22px 24px;border-radius:22px;background:rgba(255,252,243,.46);border:1px solid rgba(255,255,255,.85);box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 18px 40px -22px rgba(52,77,32,.38);backdrop-filter:blur(24px) saturate(160%);color:#1f2e17;font:15px/1.5 ui-sans-serif,system-ui,sans-serif}.ds-glass h2{margin:0 0 6px;font-size:17px;font-weight:650}"
+    },
+    {
+      "name": "Tier chip",
+      "kind": "chip",
+      "refersTo": "chip-tier-a",
+      "description": "Tier label on its own tinted pill.",
+      "html": "<span class=\"ds-chip\">Tier A</span>",
+      "css": ".ds-chip{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;font:650 12px ui-sans-serif,system-ui,sans-serif;background:rgba(76,140,60,.16);color:#2f6a2a}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The calm greenhouse: frosted glass over a cream-to-sage gradient, where the next thing to do is the brightest pane.",
+    "rules": ["One offline file; nothing from the network.", "Amber means waiting, nothing else.", "Plain language for non-technical users."]
+  }
+}

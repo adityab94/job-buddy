@@ -2,10 +2,12 @@
 
 ## 0.6.0 (31 Oct 2026)
 
-- **Dashboard.** A friendly `dashboard.html` in your folder: headline numbers, what needs your
-  attention (deadlines, interviews, quiet applications, Tier A roles to apply for), a pipeline
-  board, whether your rubric works, your top gaps and closed roles. Works offline, sends
-  nothing anywhere, light and dark mode, fits a phone. Refreshes whenever the tracker changes.
+- **Dashboard.** A friendly `dashboard.html` in your folder, designed in The Buddy Social's
+  palette: frosted-glass panes over a cream-to-sage gradient, with the logo at the top. It shows
+  what needs you next (deadlines, interviews, quiet applications, Tier A roles to apply for), your
+  numbers at a glance, a pipeline board, whether your scoring works, what to learn next and
+  closed roles. Light by default with a dark-mode toggle; works offline, sends nothing anywhere,
+  fits a phone. Refreshes whenever the tracker changes.
 - **Gap plan.** Each score now records the gaps that cost points. Ask "what should I learn?"
   and Job Buddy re-scores every role as if you had each missing skill, then shows which one
   moves the most open roles up a tier, with an honest plan to close it.

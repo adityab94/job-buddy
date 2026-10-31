@@ -25,6 +25,7 @@ plugins/job-buddy/
     scripts/collector.js               browser collector (runs in Claude desktop's built-in browser)
     scripts/jb.py                      core: score maths, evidence check, gap plan, seen list, tracker I/O, migrations
     scripts/dashboard.py               renders the user's dashboard.html (self-contained, offline)
+    scripts/logo.py                    The Buddy Social wordmark as an embedded alpha mask (from the supplied logo)
     assets/workspace-template/         blank user workspace: profile.md, tracker.xlsx, seen.txt, cv/, outputs/, jds/, examples/
 feed/                                  shared Ireland feed: build_feed.py + watchlist-ie.json (built daily
                                        by .github/workflows/feed.yml, published to the `feed` branch)
@@ -32,6 +33,8 @@ tests/                                 unit tests for jb.py and the feed (python
 .github/                               check.yml (every push), feed.yml (daily), issue templates
 job-buddy-skill.zip                    skill-only zip for claude.ai upload (rebuild after any skill change)
 README.md, CHANGELOG.md, LICENSE, .gitignore
+PRODUCT.md, DESIGN.md                  product truth and the dashboard's design system (impeccable skill);
+                                       .impeccable/ holds the surface brief and design.json sidecar
 ```
 
 Install line: `/plugin install job-buddy --marketplace adityab94/job-buddy`
