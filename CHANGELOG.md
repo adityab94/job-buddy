@@ -8,6 +8,9 @@
   numbers at a glance, a pipeline board, whether your scoring works, what to learn next and
   closed roles. Light by default with a dark-mode toggle; works offline, sends nothing anywhere,
   fits a phone. Refreshes whenever the tracker changes.
+- **Personal.** The dashboard greets you by first name for your time of day ("Good morning,
+  Aditya"), tells you which week of your search you're in, and leads with what matters most
+  right now: an offer, an interview, or your best match waiting. Only your first name is used.
 - **Dashboard in your Claude sidebar (optional).** Say yes at setup and Job Buddy publishes the
   dashboard as a private page in your own Claude account: always one click away, on your phone
   too, and updated after every change. It holds only what the dashboard shows, never your CV or

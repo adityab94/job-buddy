@@ -367,6 +367,21 @@ class Dashboard(unittest.TestCase):
         self.assertEqual(json.loads(data), {"mode": "artifact", "rows": [], "gaps": {}})
         self.assertNotIn("Tessel", page)
 
+    def test_greeting_uses_first_name_and_active_tracks_only(self):
+        p = self.ws / "profile.md"
+        p.write_text(p.read_text().replace("- Name:", "- Name: Sam Doyle", 1))
+        self.assertEqual(jb.dashboard_person(self.ws), {"name": "Sam", "tracks": ["Revenue Operations"]})
+        jb.tracker_upsert(self.ws, {"Company": "Tessel", "Role": "RevOps Manager"})
+        snap = json.loads((self.ws / "dashboard-data.json").read_text())
+        self.assertEqual(snap["person"]["name"], "Sam")
+        self.assertNotIn("Doyle", json.dumps(snap))
+
+    def test_no_name_means_no_greeting_name(self):
+        self.assertEqual(jb.dashboard_person(self.ws)["name"], "")
+        p = self.ws / "profile.md"
+        p.write_text(p.read_text().replace("- Name:", "- Name: <script>", 1))
+        self.assertEqual(jb.dashboard_person(self.ws)["name"], "")
+
     def test_no_external_requests(self):
         jb.build_dashboard(self.ws)
         page = (self.ws / "dashboard.html").read_text()

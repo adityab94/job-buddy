@@ -269,7 +269,7 @@ BODY = r"""<div class="sky" aria-hidden="true"></div>
 <header>
   <div class="mark" role="img" aria-label="The Buddy Social"></div>
   <div class="title">
-    <h1>Your job search</h1>
+    <h1 id="hello">Your job search</h1>
     <p class="status" id="status"></p>
   </div>
   <div class="tools">
@@ -356,6 +356,33 @@ function visible() {
   return D.rows.filter(r => (!t || r.Track === t) && (!s || `${r.Company} ${r.Role}`.toLowerCase().includes(s)));
 }
 
+// Personal touches, all from the user's own profile and tracker: first name, the time of day on
+// their own clock, how long the search has run, and the one thing that matters most right now.
+function greet() {
+  const name = (D.person || {}).name, hr = new Date().getHours();
+  const part = hr >= 5 && hr < 12 ? 'Good morning' : hr >= 12 && hr < 17 ? 'Good afternoon' : hr >= 17 && hr < 22 ? 'Good evening' : 'Hello';
+  document.getElementById('hello').textContent = name ? `${part}, ${name}` : 'Your job search';
+}
+function searchWeek(R) {
+  const tracks = ((D.person || {}).tracks || []).filter(Boolean);
+  const found = R.map(r => r['Date Found']).filter(Boolean).sort()[0];
+  if (!found) return '';
+  const week = Math.max(1, Math.ceil((days(found) + 1) / 7));
+  const what = tracks.length === 1 ? `${tracks[0]} search` : 'search';
+  return `Week ${week} of your ${what}.`;
+}
+function headline(R, ap, live, offers, T) {
+  const best = list => list.slice().sort((a, b) => (b['Fit Score'] || 0) - (a['Fit Score'] || 0))[0];
+  if (offers.length) return offers.length === 1 ? `You have an offer from ${offers[0].Company}.` : `You have ${offers.length} offers to weigh up.`;
+  const iv = R.filter(r => r.Status === 'Interview');
+  if (iv.length) return iv.length === 1 ? `${iv[0].Company} is at interview stage.` : `${iv.length} interviews in progress, led by ${best(iv).Company}.`;
+  if (live.length) return `${plural(live.length, 'application')} moving forward, ${plural(ap.length, 'sent')} in total.`;
+  const waiting = R.filter(r => (r.Status || 'Found') === 'Found' && r.Tier === 'A');
+  if (waiting.length) return `${plural(waiting.length, 'strong match', 'strong matches')} waiting for you, starting with ${best(waiting).Company}.`;
+  if (ap.length) return `${plural(ap.length, 'application')} out. ${T.length ? plural(T.length, 'thing needs', 'things need') + ' you.' : 'Nothing is waiting on you.'}`;
+  return 'No strong matches yet. Ask Claude to “find me roles”.';
+}
+
 function todos(R) {
   const out = [];
   for (const r of R) {
@@ -376,12 +403,10 @@ function render() {
   const offers = R.filter(r => r.Status === 'Offer');
   const T = todos(R);
 
+  greet();
   document.getElementById('status').textContent = !D.rows.length
     ? `Nothing tracked yet. Updated ${dateLong(today)}.`
-    : (ap.length ? `${plural(ap.length, 'application')} out` : 'No applications yet') +
-      (live.length ? `, ${live.length} in progress` : '') + (offers.length ? `, ${plural(offers.length, 'offer')}` : '') +
-      `. ${T.length ? plural(T.length, 'thing needs', 'things need') + ' you.' : 'Nothing is waiting on you.'}` +
-      ` Updated ${dateLong(today)}.`;
+    : [searchWeek(R), headline(R, ap, live, offers, T), `Updated ${dateLong(today)}.`].filter(Boolean).join(' ');
 
   if (!D.rows.length) {
     const [title, text] = {
@@ -496,7 +521,7 @@ async function connect() {
   db.doc('dashboard/snapshot').onSnapshot(snap => {
     clearTimeout(timer);
     const d = snap.exists ? snap.data() : null;
-    D = d && Array.isArray(d.rows) ? { mode: 'artifact', rows: d.rows, gaps: d.gaps || {}, generated: d.generated }
+    D = d && Array.isArray(d.rows) ? { mode: 'artifact', rows: d.rows, gaps: d.gaps || {}, generated: d.generated, person: d.person || {} }
       : { mode: 'artifact', rows: [], gaps: {} };
     today = new Date((D.generated || new Date().toISOString().slice(0, 10)) + 'T12:00:00');
     setTracks(); render();
@@ -517,13 +542,14 @@ start();
 # Only the columns the page shows. Notes, Top Gap, sources and dates the page never displays stay
 # in the tracker, so the online copy holds as little as possible.
 SHOWN = ("Company", "Role", "Track", "Tier", "Fit Score", "Status", "Rejected At", "Next Action",
-         "Materials", "Job URL", "Last Update")
+         "Materials", "Job URL", "Date Found", "Last Update")
 
 
-def snapshot(rows, gaps, generated):
-    """The dashboard's data: what the local page embeds and what the artifact's store holds."""
+def snapshot(rows, gaps, generated, person=None):
+    """The dashboard's data: what the local page embeds and what the artifact's store holds.
+    person: {"name": first name only, "tracks": [track names]} from profile.md."""
     rows = [{k: r[k] for k in SHOWN if r.get(k) not in (None, "")} for r in rows]
-    return {"generated": generated, "rows": rows,
+    return {"generated": generated, "rows": rows, "person": person or {},
             "gaps": {"skills": gaps.get("skills", [])[:5], "notes": gaps.get("notes", [])}}
 
 
@@ -534,11 +560,11 @@ def _fill(part, data):
     return part.replace("__LOGO__", LOGO_MASK_PNG_B64).replace("__DATA__", blob)
 
 
-def render(rows, gaps, generated):
+def render(rows, gaps, generated, person=None):
     """The local dashboard.html: a complete document with the data embedded."""
     head = '<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
     return ('<!doctype html>\n<html lang="en" data-theme="light">\n<head>\n' + head + _fill(HEAD, {}) +
-            '</head>\n<body>\n' + _fill(BODY, snapshot(rows, gaps, generated)) + '</body>\n</html>\n')
+            '</head>\n<body>\n' + _fill(BODY, snapshot(rows, gaps, generated, person)) + '</body>\n</html>\n')
 
 
 def render_artifact():

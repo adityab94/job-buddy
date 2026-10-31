@@ -499,6 +499,17 @@ def tracker_upsert(ws, rows):
     return result
 
 
+def dashboard_person(ws):
+    """First name and active track names from profile.md, for the dashboard's greeting."""
+    text = (ws / "profile.md").read_text(encoding="utf-8")
+    m = re.search(r"^- Name:[ \t]*(\S[^\n]*)$", text, re.M)
+    first = m.group(1).strip().split()[0] if m else ""
+    if not re.fullmatch(r"[^\W\d_][\w'-]{0,40}", first or "-"):
+        first = ""
+    tracks = [t["name"] for t in parse_tracks(text) if t["status"].upper() != "PAUSED" and t["name"] and "<" not in t["name"]]
+    return {"name": first, "tracks": tracks}
+
+
 SNAPSHOT_LIMIT = 240_000  # the artifact store holds documents up to 256 KiB
 
 
@@ -509,9 +520,9 @@ def build_dashboard(ws, artifact_page=False):
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import dashboard
     rows = tracker_list(ws, all_cols=True)
-    gaps, generated = gap_report(ws), today().isoformat()
-    (ws / "dashboard.html").write_text(dashboard.render(rows, gaps, generated), encoding="utf-8")
-    snap = dashboard.snapshot(rows, gaps, generated)
+    gaps, generated, person = gap_report(ws), today().isoformat(), dashboard_person(ws)
+    (ws / "dashboard.html").write_text(dashboard.render(rows, gaps, generated, person), encoding="utf-8")
+    snap = dashboard.snapshot(rows, gaps, generated, person)
     blob = json.dumps(snap, ensure_ascii=False, default=str)
     result = {"written": ["dashboard.html", "dashboard-data.json"], "roles": len(rows), "snapshot_bytes": len(blob.encode())}
     if len(blob.encode()) > SNAPSHOT_LIMIT:
