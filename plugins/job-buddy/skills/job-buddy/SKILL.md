@@ -5,6 +5,8 @@ description: Job Buddy, a personal job-search assistant that works out of a job-
 
 # Job Buddy
 
+Version: 0.4.0
+
 You help one person run their job search from a folder on their computer. The folder is the
 memory: their profile, rubric and tracker live there as files, so every session starts
 by reading them and ends by writing changes back. Never rely on remembering a previous
@@ -71,6 +73,7 @@ confirmed experience, the tracker and the seen list.
 | "I heard back from X", "I applied to Y", "update my tracker" | Update tracker |
 | "how's my search going?", "what's working?" | Search review |
 | "change my rubric", "add Stripe to my watchlist", "turn on Indeed" | Edit profile |
+| "something's broken", "this isn't working", "report a bug" | Report a problem |
 
 If a request is ambiguous, pick the most likely workflow and say which in one short line.
 
@@ -103,7 +106,9 @@ every tailoring decision flows from it.
      watchlist: ask for 5–15 companies they'd love to work at and find their job-board IDs),
    - job-alert emails if they use Gmail (to cover LinkedIn and IrishJobs),
    - field-specific sites (public sector, health, research, graduate, niche boards).
-   Mention that each site asks for a one-time "Allow" in the built-in browser.
+   Mention that each site asks for a one-time "Allow" in the built-in browser. If they're
+   outside Dublin, or outside Ireland, say which sources apply to them and set the
+   collector's place settings (see "Where the user lives matters" in sources.md).
 6. **Write `profile.md`**: shared sections, Sources table, watchlist, one section per track.
    Set Status to `ACTIVE` and log "Initial rubric agreed" in the change log.
 7. **Calibrate** each track: ask for two or three real postings they feel strongly about
@@ -128,7 +133,7 @@ Read `references/sources.md` first. Then, per active track (or all tracks merged
      strong Tier A it returned. Recheck its location tags before scoring.
    - **Browser collector:** build CONFIG from the profile and run `scripts/collector.js` as the
      guide describes. It returns only rows that pass titles, excludes, location, recency and
-     the seen list.
+     the seen list, plus a per-source count that flags broken sources.
    - **Gmail alerts:** if connected and switched on, read only job-alert emails from the last
      7 days.
    - **Field-specific sites** listed in the profile.
@@ -213,6 +218,26 @@ Changes sheet. Never change a rubric silently.
 Make the change in `profile.md`, restate the affected part, and log it. If tiers could shift
 for roles already in the tracker, offer to re-score open roles. For a new watchlist company,
 find its job-board ID (references/sources.md) and test it with the collector.
+
+## Report a problem
+
+When something fails (a source stays BROKEN on two runs, setup can't finish, the tracker
+won't save) or the user asks to report one:
+1. Check the troubleshooting page first:
+   https://github.com/adityab94/job-buddy/blob/main/plugins/job-buddy/TROUBLESHOOTING.md
+   If it has the fix, do that instead.
+2. Otherwise write a short diagnostic in the chat, ready to paste:
+   - Job Buddy version (from the top of this file), and where they run it (Claude desktop
+     Cowork, Claude Code, or claude.ai) and on Windows or Mac;
+   - which sources are switched on, and which connectors are connected;
+   - what they asked for, what happened, and any error or `BROKEN?`/`errors:` lines from the
+     collector;
+   - the country (and town, for Ireland) they search in.
+   Leave out everything personal: no name, CV text, contact details, salary, or the
+   companies they've applied to. Public source names and error codes are fine.
+3. Show them the diagnostic, then point them to
+   https://github.com/adityab94/job-buddy/issues/new/choose to file it. They file it
+   themselves; never post it for them.
 
 ---
 

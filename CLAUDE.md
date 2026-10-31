@@ -8,7 +8,7 @@ Context for Claude Code working in this repo. Read this first.
 search from a local folder: it builds a scoring rubric for their field, finds roles, scores them
 0–100 (tiers A/B/C), tailors CVs and cover letters honestly, and keeps an application tracker.
 Audience: job seekers in any field (Ireland/EU default), many non-technical, on Windows or Mac.
-Repo: https://github.com/adityab94/job-buddy · Licence: MIT · Current version: 0.3.1
+Repo: https://github.com/adityab94/job-buddy · Licence: MIT · Current version: 0.4.0
 
 ## Repo layout
 
@@ -68,9 +68,11 @@ Install line: `/plugin install job-buddy --marketplace adityab94/job-buddy`
 - Keep SKILL.md lean; detail goes in references/.
 - After changing anything under `skills/job-buddy/`: rebuild `job-buddy-skill.zip`
   (`cd plugins/job-buddy/skills && zip -r ../../../job-buddy-skill.zip job-buddy`), bump the
-  version in both plugin.json and marketplace.json, and run
-  `claude plugin validate plugins/job-buddy/.claude-plugin/plugin.json` and
-  `claude plugin validate .claude-plugin/marketplace.json`.
+  version in plugin.json, marketplace.json and SKILL.md's `Version:` line, add a CHANGELOG.md
+  entry, and run `python3 .github/scripts/check_release.py`. The GitHub check
+  (`.github/workflows/check.yml`) runs that plus `claude plugin validate` on every push.
+- Before a release that changes SKILL.md or references/, run the eval suite:
+  `cd plugins/job-buddy && claude plugin eval .` (see `evals/README.md`; uses plan usage).
 - Never commit personal data (CVs, profiles, trackers, outputs). `.gitignore` covers common paths.
 - collector.js must stay plain browser JS (no build step, no dependencies) and be pasteable in one call.
 

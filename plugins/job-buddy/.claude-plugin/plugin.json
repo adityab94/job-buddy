@@ -1,6 +1,6 @@
 {
   "name": "job-buddy",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Job Buddy runs your job search from a folder: builds a scoring rubric for your field (one or more role tracks, each with its own CV), finds roles via Indeed, company job boards, Built In Dublin, Jobs.ie, remote feeds, job-alert emails and pasted links, scores them, tailors CVs and cover letters, and keeps an application tracker.",
   "author": {
     "name": "Aditya Bhatnagar (The Buddy Social)"

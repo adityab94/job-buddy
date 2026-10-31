@@ -57,15 +57,31 @@ browser, fetches public feeds, filters them in the page and returns short rows o
 How to run it:
 1. Build CONFIG from profile.md: `include` = the track's target titles (lowercase),
    `exclude` = the track's exclude words, `places`, `remote`, `days`, `seen` (see below),
-   `companies` (watchlist), `feeds` (remote feeds switched on), `builtin: true/false`.
+   `companies` (watchlist), `feeds` (remote feeds switched on), `builtin: true/false`,
+   `jobsiePlace` (the user's town or county, e.g. `cork`, `galway`; default `dublin`).
    With several tracks, run once per track or merge the include lists and route afterwards.
-2. Open `https://builtindublin.ie/jobs` in the built-in browser (any page on that site works).
+2. Open `https://builtindublin.ie/jobs` in the built-in browser (any page on that site works,
+   and it is only a host page: the watchlist and feeds work from it for users anywhere).
    Paste the contents of `scripts/collector.js` into one javascript call, followed by
    `await JSA.run(CONFIG)`. This covers the company watchlist, remote feeds and Built In Dublin.
 3. If Jobs.ie is switched on: open `https://www.jobs.ie/`, paste the script again, then
    `await JSA.jobsie(CONFIG)`.
-4. The result starts with `checked N | kept K | dropped {...}`, then any errors, then one row
-   per kept job: `source | company | title | location | age in days | link`.
+4. The result starts with `checked N | kept K | dropped {...}`, then:
+   - `per source:` how many listings each source returned before filtering;
+   - `BROKEN? 0 listings from: …` a feed or scraped site that returned nothing. That
+     almost always means it broke (site redesign, feed down), not a quiet week;
+   - `no openings: …` watchlist companies with no open jobs right now (normal);
+   - `errors: …` sources that failed outright (a `404` usually means a wrong board ID);
+   then one row per kept job: `source | company | title | location | age in days | link`.
+   Tell the user in one line about every BROKEN or errored source, and suggest they report
+   a source that stays broken on two runs (see **Report a problem** in SKILL.md).
+
+**Where the user lives matters.** Built In Dublin is Dublin-only and Jobs.ie needs
+`jobsiePlace`. For users outside Dublin, set `builtin: false` and `jobsiePlace` to their
+town or county. For users outside Ireland, Built In Dublin and Jobs.ie don't apply: their
+sources are the Indeed connector (with their country code), JobDataLake, the company
+watchlist, remote feeds, job-alert emails and field-specific sites for their country.
+Say this plainly at setup so a thin first search isn't a surprise.
 
 First use of each site asks the user to allow it once in the built-in browser.
 
@@ -85,7 +101,7 @@ Finding a company's board ID: open its careers page and look at where "Apply" li
 An error like `404` for a company in the collector output means the ID is wrong or the
 company moved board; tell the user and fix the watchlist.
 
-If a site's layout changes, the collector reports zero listings or an error for it. Say so in
+If a site's layout changes, the collector flags it as BROKEN or reports an error. Say so in
 one line; never report "no new roles" when a source failed.
 
 ## 4. Job-alert emails (Gmail connector, optional)

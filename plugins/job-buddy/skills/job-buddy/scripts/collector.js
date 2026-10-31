@@ -17,7 +17,8 @@
 //   seen: ["wayflyer|gtm engineer", ...],                         // company|title keys already handled
 //   companies: [{n:"Intercom",ats:"greenhouse",s:"intercom"}, ...],
 //   feeds: ["remotive","arbeitnow","remoteok"],                   // optional remote/EU feeds
-//   builtin: true                                                 // search Built In Dublin with each include term
+//   builtin: true,                                                // search Built In Dublin with each include term
+//   jobsiePlace: "cork"                                           // Jobs.ie town or county (default "dublin")
 // }
 window.JSA = (() => {
   const low = s => (s || '').toLowerCase();
@@ -40,6 +41,8 @@ window.JSA = (() => {
   }
 
   const j = async u => { const r = await fetch(u); if (!r.ok) throw new Error(r.status); return r.json(); };
+  const page = async u => { const r = await fetch(u); if (!r.ok) throw new Error(r.status);
+    const d = new DOMParser().parseFromString(await r.text(), 'text/html'); d.querySelectorAll('style,script').forEach(s => s.remove()); return d; };
   const ats = {
     greenhouse: async x => (await j(`https://boards-api.greenhouse.io/v1/boards/${x.s}/jobs`)).jobs.map(p =>
       ({ c: x.n, t: p.title, l: p.location?.name, age: ageDays(p.first_published || p.updated_at), u: p.absolute_url, id: 'gh:' + p.id })),
@@ -63,7 +66,7 @@ window.JSA = (() => {
   async function builtin(cfg) {
     const out = [];
     for (const q of cfg.include) {
-      const d = new DOMParser().parseFromString(await (await fetch('/jobs?search=' + encodeURIComponent(q) + '&daysSinceUpdated=' + (cfg.days || 14))).text(), 'text/html');
+      const d = await page('/jobs?search=' + encodeURIComponent(q) + '&daysSinceUpdated=' + (cfg.days || 14));
       d.querySelectorAll('[data-id="job-card"]').forEach(card => {
         const a = card.querySelector('a[href*="/job/"]'); if (!a) return;
         const txt = card.innerText.replace(/\s+/g, ' ');
@@ -74,39 +77,50 @@ window.JSA = (() => {
     return out;
   }
 
-  function finish(cfg, all, errors) {
+  // counts: listings fetched per source before filtering. A scraped site (builtin, jobs.ie) or a
+  // feed with 0 listings almost always means it broke, so it's flagged; a company board with 0
+  // may just have no openings, so it's listed separately.
+  function finish(cfg, all, errors, counts) {
     const stats = {}, rows = [], dup = new Set();
+    const per = Object.entries(counts).map(([s, n]) => `${s} ${n}`).join(', ');
+    const empty = Object.entries(counts).filter(([s, n]) => n === 0);
+    const broken = empty.filter(([s]) => s in feeds || s === 'builtin' || s === 'jobs.ie').map(([s]) => s);
+    const quiet = empty.filter(([s]) => !broken.includes(s)).map(([s]) => s);
     for (const r of all) {
       const why = keep(cfg, r); if (why) { stats[why] = (stats[why] || 0) + 1; continue; }
       const k = key(r.c, r.t); if (dup.has(k)) { stats.duplicate = (stats.duplicate || 0) + 1; continue; } dup.add(k);
       rows.push([r.src, r.c, r.t, (r.l || '').replace(/\s+/g, ' ').slice(0, 60), r.age ?? '?', r.u].join(' | '));
     }
     return `checked ${all.length} | kept ${rows.length} | dropped ${JSON.stringify(stats)}` +
+      `\nper source: ${per || 'none'}` +
+      (broken.length ? `\nBROKEN? 0 listings from: ${broken.join(', ')}` : '') +
+      (quiet.length ? `\nno openings: ${quiet.join(', ')}` : '') +
       (errors.length ? `\nerrors: ${errors.join('; ')}` : '') + '\n' + rows.join('\n');
   }
 
   async function run(cfg) {
-    const all = [], errors = [];
-    const tag = (src, list) => list.forEach(r => { r.src = src; all.push(r); });
+    const all = [], errors = [], counts = {};
+    const tag = (src, list, name = src) => { counts[name] = list.length; list.forEach(r => { r.src = src; all.push(r); }); };
     await Promise.all([
       ...(cfg.companies || []).map(x => (ats[x.ats] ? ats[x.ats](x) : Promise.reject(new Error('unknown ats')))
-        .then(l => tag(x.ats, l)).catch(e => errors.push(`${x.n}(${x.ats}): ${e.message}`))),
+        .then(l => tag(x.ats, l, x.n)).catch(e => errors.push(`${x.n}(${x.ats}): ${e.message}`))),
       ...(cfg.feeds || []).map(f => feeds[f]().then(l => tag(f, l)).catch(e => errors.push(`${f}: ${e.message}`))),
     ]);
-    if (cfg.builtin && location.hostname.includes('builtindublin')) {
-      try { tag('builtin', await builtin(cfg)); } catch (e) { errors.push('builtin: ' + e.message); }
+    if (cfg.builtin) {
+      if (!location.hostname.includes('builtindublin')) errors.push('builtin: skipped, not run from a builtindublin.ie page');
+      else try { tag('builtin', await builtin(cfg)); } catch (e) { errors.push('builtin: ' + e.message); }
     }
-    return finish(cfg, all, errors);
+    return finish(cfg, all, errors, counts);
   }
 
   // Jobs.ie (sister site of IrishJobs): run from any jobs.ie page; one search per include term.
+  // cfg.jobsiePlace: the town or county to search in (default "dublin").
   async function jobsie(cfg) {
-    const all = [], errors = [], place = (cfg.jobsiePlace || 'dublin');
+    const all = [], errors = [], place = low(cfg.jobsiePlace || 'dublin').replace(/[^a-z0-9]+/g, '-');
     for (const q of cfg.include) {
       try {
         const slug = low(q).replace(/[^a-z0-9]+/g, '-');
-        const d = new DOMParser().parseFromString(await (await fetch(`/jobs/${slug}/in-${place}?postedWithin=${cfg.days || 14}`)).text(), 'text/html');
-        d.querySelectorAll('style,script').forEach(s => s.remove());
+        const d = await page(`/jobs/${slug}/in-${place}?postedWithin=${cfg.days || 14}`);
         d.querySelectorAll('article').forEach(a => {
           const g = s => a.querySelector(`[data-at="${s}"]`)?.textContent.trim() || '';
           const link = a.querySelector('[data-at="job-item-title"]'); if (!link) return;
@@ -116,7 +130,7 @@ window.JSA = (() => {
         });
       } catch (e) { errors.push(`jobs.ie "${q}": ${e.message}`); }
     }
-    return finish(cfg, all, errors);
+    return finish(cfg, all, errors, errors.length === cfg.include.length ? {} : { 'jobs.ie': all.length });
   }
 
   return { run, jobsie, key };

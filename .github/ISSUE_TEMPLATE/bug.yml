@@ -1,0 +1,20 @@
+name: Something isn't working
+description: Setup, scoring, tailoring or the tracker went wrong.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Tip: ask Claude "report a problem with Job Buddy". It writes the details below for you,
+        with nothing personal in them. Please don't paste your CV, salary or contact details here.
+  - type: textarea
+    id: diagnostic
+    attributes:
+      label: Diagnostic from Claude (or describe it yourself)
+      description: Version, where you run it (Cowork / Claude Code / claude.ai), Windows or Mac, sources on, what you asked, what happened.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?

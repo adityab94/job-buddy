@@ -24,9 +24,9 @@ You can edit anything here yourself at any time.)
 |---|---|---|
 | Indeed (connector) | | country code, location |
 | JobDataLake (connector) | | tech, data, sales/ops; big companies' own career sites |
-| Built In Dublin (browser) | | tech and startup roles |
+| Built In Dublin (browser) | | tech and startup roles; Dublin only |
 | Company watchlist (browser) | | see table below |
-| Jobs.ie (browser) | | sister site of IrishJobs |
+| Jobs.ie (browser) | | sister site of IrishJobs; place: dublin |
 | Remote feeds (browser) | | remotive, remoteok |
 | Job-alert emails (Gmail) | | covers LinkedIn, Indeed and IrishJobs alerts |
 | Field-specific sites | | e.g. publicjobs.ie, HSE, EURAXESS, gradireland |

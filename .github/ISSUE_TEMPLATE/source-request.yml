@@ -1,0 +1,16 @@
+name: Suggest a job source
+description: A job site or company board Job Buddy should read.
+labels: [source-request]
+body:
+  - type: input
+    id: site
+    attributes:
+      label: Site or company
+      placeholder: e.g. publicjobs.ie, or a company's careers page link
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Who is it for?
+      description: Field and country, e.g. "nurses in Ireland", "data roles in the Netherlands".

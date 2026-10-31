@@ -1,0 +1,23 @@
+name: Check plugin
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Versions, changelog and skill zip match
+        run: python3 .github/scripts/check_release.py
+      - name: Collector is valid JavaScript
+        run: node --check plugins/job-buddy/skills/job-buddy/scripts/collector.js
+      - name: Validate plugin and marketplace manifests
+        run: |
+          npx -y @anthropic-ai/claude-code@2.1.309 plugin validate plugins/job-buddy/.claude-plugin/plugin.json
+          npx -y @anthropic-ai/claude-code@2.1.309 plugin validate .claude-plugin/marketplace.json

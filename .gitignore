@@ -6,3 +6,6 @@ job-search/
 !**/outputs/README.txt
 *.backup-*.md
 .DS_Store
+
+# Eval run output
+**/evals/results/

@@ -5,7 +5,7 @@ Runs your job search from a folder on your computer. Say **"set me up"** to star
 Install (Claude Code):
 
 ```
-/plugin install job-buddy --marketplace <github-owner>/job-buddy-claude
+/plugin install job-buddy --marketplace adityab94/job-buddy
 ```
 
 - Builds a scoring rubric for your field, with one or more role **tracks** (each with its own CV)
@@ -16,7 +16,8 @@ Install (Claude Code):
 - Keeps an application tracker and reviews what's working
 
 Free to run: no paid scrapers, no API keys. It never logs in, applies or messages anyone for you.
-See CONNECTORS.md for the optional Indeed, Gmail and JobDataLake connectors.
+See CONNECTORS.md for the optional Indeed, Gmail and JobDataLake connectors, and
+TROUBLESHOOTING.md if something isn't working.
 
 Things to say: "set me up", "find me roles", "is this a good fit? <link>",
 "tailor my CV for <company>", "I heard back from <company>", "how's my search going?",

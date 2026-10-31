@@ -38,6 +38,8 @@ Then say **"find me roles"**, paste a job link, or **"tailor my CV for <company>
 plugins/job-buddy/
   .claude-plugin/plugin.json
   CONNECTORS.md                            ← optional Indeed, Gmail and JobDataLake connectors
+  TROUBLESHOOTING.md                       ← common problems and fixes
+  evals/                                   ← test cases for scoring, tailoring and emails
   skills/job-buddy/
     SKILL.md                               ← the instructions Claude follows
     references/                            ← rubric design, sources, tailoring, outcomes
@@ -48,7 +50,21 @@ plugins/job-buddy/
 ## Privacy
 
 Your profile, CVs, tracker and tailored documents stay in your own folder, never in this repo.
-The `.gitignore` blocks them if you fork this.
+The `.gitignore` blocks them if you fork this. What goes where:
+
+- **Claude** reads your CV and profile to score jobs and tailor documents, like any file
+  you share with Claude.
+- **Indeed and JobDataLake** (if you connect them) receive only your search words and
+  location, never your CV.
+- **Job sites** read by the collector receive ordinary page requests, with no login.
+- **Nothing is sent to the Job Buddy author.** There is no tracking or analytics.
+
+## Problems and ideas
+
+See [TROUBLESHOOTING.md](plugins/job-buddy/TROUBLESHOOTING.md), or ask Claude to "report a
+problem with Job Buddy" and file what it writes as an
+[issue](https://github.com/adityab94/job-buddy/issues/new/choose). Changes are listed in
+[CHANGELOG.md](CHANGELOG.md).
 
 ## Respecting job sites
 

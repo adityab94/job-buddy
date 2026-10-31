@@ -1,0 +1,23 @@
+name: A job source is broken
+description: A source shows "BROKEN?" or an error on two or more runs.
+labels: [source]
+body:
+  - type: input
+    id: source
+    attributes:
+      label: Which source?
+      placeholder: e.g. Built In Dublin, Jobs.ie, Remotive, Indeed connector
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: What the collector said
+      description: The "per source", "BROKEN?" and "errors" lines Claude reported.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Job Buddy version
+      placeholder: e.g. 0.4.0
