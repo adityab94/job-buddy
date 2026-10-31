@@ -20,6 +20,9 @@ You can edit anything here yourself at any time.)
 - Remote regions accepted:
 - Recency: posted in the last 14 days
 
+## Dashboard
+- Online dashboard: not offered yet
+
 ## Sources
 | Source | On? | Notes |
 |---|---|---|

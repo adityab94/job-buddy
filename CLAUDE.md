@@ -85,6 +85,11 @@ Install line: `/plugin install job-buddy --marketplace adityab94/job-buddy`
 12. **Gap economics (v0.6).** Each score saves `jds/<Company> - <Role>.score.json` with dimension
    scores and gaps ({skill, dimension, score_if_closed}); `jb.py gaps` re-scores roles per gap
    with the current rubric and ranks by open-role tier upgrades. Scores round half up.
+13. **Online dashboard is an opt-in private artifact (v0.6).** Published once from
+   `dashboard-artifact.html` (no data in its source) with a `db` capability (rule: dashboard
+   read view / write owner); Claude ArtifactData-sets `dashboard/snapshot` from
+   `dashboard-data.json` (only displayed columns, no notes) after tracker changes, pinned with
+   `if_version`. Procedure in references/dashboard.md. Local file stays the default.
 
 ## Conventions
 

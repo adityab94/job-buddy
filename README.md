@@ -29,8 +29,9 @@ Updates: push a new version here and users get it when they update the marketpla
 4. Optional: connect **Indeed**, **Gmail** and **JobDataLake** (see `plugins/job-buddy/CONNECTORS.md`),
    and set up free job alerts on LinkedIn, Indeed and IrishJobs.
 
-Then say **"find me roles"**, paste a job link, or **"tailor my CV for <company>"**. Double-click
-`dashboard.html` in your folder any time for an overview, or ask **"what should I learn?"**.
+Then say **"find me roles"**, paste a job link, or **"tailor my CV for <company>"**. Your dashboard
+lives in your Claude sidebar (if you chose it at setup) and as `dashboard.html` in your folder.
+Ask **"what should I learn?"** any time.
 
 ## What's inside
 
@@ -62,6 +63,9 @@ The `.gitignore` blocks them if you fork this. What goes where:
 - **Job sites** read by the collector receive ordinary page requests, with no login.
 - **The shared feed** is a public file of job listings built daily from employers' public job
   boards (`feed/`). Your Job Buddy downloads it; it never uploads anything.
+- **Your dashboard in Claude** (only if you say yes at setup) is a private page in your own
+  Claude account. It holds your roles, tiers, scores and statuses, never your CV or notes.
+  Only you can see it unless you share it.
 - **Nothing is sent to the Job Buddy author.** There is no tracking or analytics.
 
 ## Problems and ideas

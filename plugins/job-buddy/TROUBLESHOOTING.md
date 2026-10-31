@@ -56,6 +56,19 @@ ask Claude to "repair the tracker formulas".
 
 ## Dashboard
 
+**I want my dashboard in Claude, not as a file.**
+Ask Claude "put my dashboard in my Claude sidebar". It creates a private page in your Claude
+account that updates itself and also opens on your phone. Not every Claude app supports this;
+if yours doesn't, the local file still works.
+
+**My online dashboard is out of date.**
+It updates at the end of each task that changes your tracker. If you edited tracker.xlsx
+yourself, ask Claude to "refresh my dashboard".
+
+**It says "Open this from your Claude sidebar".**
+The page reads your data from your Claude account, so it needs to be opened from Claude while
+you're signed in.
+
 **There's no dashboard.html.**
 It appears once Job Buddy has written the first role to your tracker. You can also ask Claude
 to "show my dashboard".

@@ -8,6 +8,10 @@
   numbers at a glance, a pipeline board, whether your scoring works, what to learn next and
   closed roles. Light by default with a dark-mode toggle; works offline, sends nothing anywhere,
   fits a phone. Refreshes whenever the tracker changes.
+- **Dashboard in your Claude sidebar (optional).** Say yes at setup and Job Buddy publishes the
+  dashboard as a private page in your own Claude account: always one click away, on your phone
+  too, and updated after every change. It holds only what the dashboard shows, never your CV or
+  notes. The local file still works for anyone who prefers it.
 - **Gap plan.** Each score now records the gaps that cost points. Ask "what should I learn?"
   and Job Buddy re-scores every role as if you had each missing skill, then shows which one
   moves the most open roles up a tier, with an honest plan to close it.

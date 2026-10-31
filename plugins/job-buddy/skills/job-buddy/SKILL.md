@@ -34,7 +34,7 @@ job-search/
 
 This skill ships its own guides and tools, next to this file:
 - `references/rubric-design.md`, `references/sources.md`, `references/tailoring.md`,
-  `references/outcomes.md`: read the one a workflow names, when it names it.
+  `references/outcomes.md`, `references/dashboard.md`: read the one a workflow names, when it names it.
 - `scripts/collector.js`: the browser collector (see references/sources.md).
 - `scripts/jb.py`: the core. It does everything that must be exact: score arithmetic and
   tiers, checking evidence against the saved job ad, the seen list, tracker reads and
@@ -124,7 +124,9 @@ every tailoring decision flows from it.
    Mention that each site asks for a one-time "Allow" in the built-in browser. If they're
    outside Dublin, or outside Ireland, say which sources apply to them and set the
    collector's place settings (see "Where the user lives matters" in sources.md).
-6. **Write `profile.md`**: shared sections, Sources table, watchlist, one section per track.
+   - an online dashboard in their Claude sidebar (offer it once, as `references/dashboard.md`
+     describes; it's their choice, and the local file works either way).
+6. **Write `profile.md`**: shared sections, Sources table, watchlist, Dashboard, one section per track.
    Set Status to `ACTIVE` and log "Initial rubric agreed" in the change log.
 7. **Calibrate** each track: ask for two or three real postings they feel strongly about
    (one great, one meh, one bad). Score them. If scores don't match their gut, find which
@@ -265,17 +267,20 @@ For "what should I learn?", "what's holding me back?", or as part of a search re
 
 ## Dashboard
 
-`dashboard.html` in their folder is the friendly view of everything: headline numbers, what
-needs their attention (deadlines, interviews, applications that have gone quiet, Tier A roles
-not yet applied for), a pipeline board by stage, whether Tier A is converting better than
-Tier B, their top gaps, and closed roles. It's one file that works offline and sends nothing
-anywhere. `jb.py tracker upsert` refreshes it automatically; `jb.py dashboard <workspace>`
-refreshes it on demand (do that if they edited the tracker by hand).
+The friendly view of everything: what needs them next, their numbers, a pipeline board,
+whether Tier A converts better than Tier B, their top gaps, and closed roles. Read
+`references/dashboard.md` before creating or updating the online copy.
 
-When they ask to see it, refresh it and open it in the built-in browser if you can;
-otherwise tell them to double-click `dashboard.html` in their job-search folder. Mention it
-once at the end of setup and after the first search. The tracker stays the place where the
-data lives; they never have to open Excel unless they want to.
+- **Local** `dashboard.html` in their folder, always: offline, sends nothing anywhere.
+  `jb.py tracker upsert` refreshes it; `jb.py dashboard <workspace>` refreshes it on demand
+  (after they edit the tracker by hand).
+- **In Claude**, if they chose it at setup: a private artifact in their own Claude account,
+  in their sidebar and on their phone. Once profile.md records its link, update its data at
+  the end of every task that changed the tracker, as the reference describes.
+
+When they ask to see it, give the online link if they have one; otherwise open
+`dashboard.html` in the built-in browser if you can, or tell them to double-click it. The
+tracker stays the place where the data lives; they never have to open Excel unless they want to.
 
 ## Edit profile
 

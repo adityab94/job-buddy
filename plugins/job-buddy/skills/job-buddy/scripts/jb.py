@@ -15,7 +15,8 @@ Usage (WORKSPACE is the user's job-search folder; JSON goes in on stdin and come
   jb.py seen    WORKSPACE check|add       lines of "company|title" on stdin
   jb.py tracker WORKSPACE list [--all]    tracker rows as JSON
   jb.py tracker WORKSPACE upsert          [{"Company", "Role", ...column: value}] on stdin
-  jb.py dashboard WORKSPACE               write dashboard.html (also refreshed after every upsert)
+  jb.py dashboard WORKSPACE [--artifact-page]   write dashboard.html and dashboard-data.json (also
+                                          after every upsert); --artifact-page adds the page to publish once
 
 Exit codes: 0 ok, 2 bad input, 3 file open elsewhere (close it and retry), 4 openpyxl missing.
 Standard library only, except the tracker commands and migration's tracker step (openpyxl).
@@ -498,13 +499,36 @@ def tracker_upsert(ws, rows):
     return result
 
 
-def build_dashboard(ws):
+SNAPSHOT_LIMIT = 240_000  # the artifact store holds documents up to 256 KiB
+
+
+def build_dashboard(ws, artifact_page=False):
+    """dashboard.html (local, data embedded) and dashboard-data.json (the snapshot Claude writes to
+    the user's private dashboard artifact). With artifact_page, also dashboard-artifact.html: the
+    data-free page published once as that artifact."""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import dashboard
     rows = tracker_list(ws, all_cols=True)
-    page = dashboard.render(rows, gap_report(ws), today().isoformat())
-    (ws / "dashboard.html").write_text(page, encoding="utf-8")
-    return {"written": "dashboard.html", "roles": len(rows)}
+    gaps, generated = gap_report(ws), today().isoformat()
+    (ws / "dashboard.html").write_text(dashboard.render(rows, gaps, generated), encoding="utf-8")
+    snap = dashboard.snapshot(rows, gaps, generated)
+    blob = json.dumps(snap, ensure_ascii=False, default=str)
+    result = {"written": ["dashboard.html", "dashboard-data.json"], "roles": len(rows), "snapshot_bytes": len(blob.encode())}
+    if len(blob.encode()) > SNAPSHOT_LIMIT:
+        # Too big for one store document: drop closed roles' notes first, then closed roles.
+        for r in snap["rows"]:
+            if r.get("Status") in ("Rejected", "Withdrawn", "Ghosted"):
+                r.pop("Notes", None)
+        blob = json.dumps(snap, ensure_ascii=False, default=str)
+        if len(blob.encode()) > SNAPSHOT_LIMIT:
+            snap["rows"] = [r for r in snap["rows"] if r.get("Status") not in ("Rejected", "Withdrawn", "Ghosted")]
+            blob = json.dumps(snap, ensure_ascii=False, default=str)
+            result["note"] = "closed roles left out of the online dashboard to fit its size limit"
+    (ws / "dashboard-data.json").write_text(blob, encoding="utf-8")
+    if artifact_page:
+        (ws / "dashboard-artifact.html").write_text(dashboard.render_artifact(), encoding="utf-8")
+        result["written"].append("dashboard-artifact.html")
+    return result
 
 
 # ---------- check and migrate ----------
@@ -612,7 +636,7 @@ def main(argv):
     elif cmd == "tracker" and rest[:1] == ["list"]:
         out(tracker_list(ws, "--all" in rest))
     elif cmd == "dashboard":
-        out(build_dashboard(ws))
+        out(build_dashboard(ws, artifact_page="--artifact-page" in rest))
     elif cmd == "tracker" and rest[:1] == ["upsert"]:
         out(tracker_upsert(ws, read_stdin_json()))
     else:

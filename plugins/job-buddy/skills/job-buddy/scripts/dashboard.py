@@ -9,13 +9,8 @@ import json
 
 from logo import LOGO_MASK_PNG_B64
 
-PAGE = r"""<!doctype html>
-<html lang="en" data-theme="light">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light dark">
-<title>Your job search · Job Buddy</title>
+HEAD = r"""<title>Job Search Dashboard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
 <style>
 @property --wash-1 { syntax: '<color>'; inherits: true; initial-value: transparent; }
 @property --wash-2 { syntax: '<color>'; inherits: true; initial-value: transparent; }
@@ -29,7 +24,7 @@ PAGE = r"""<!doctype html>
   --ease: cubic-bezier(.16, 1, .3, 1);
   font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
-[data-theme="light"] {
+:root {
   --ground: #f7efda;
   --wash-1: #fff0c4; --wash-2: #b3d18c; --wash-3: #efc47a; --wash-4: #cfe4bb; --orb: rgba(110, 150, 70, .5);
   --ink: #1f2e17; --ink-2: #4f5d43; --ink-3: #5a654e;
@@ -48,7 +43,28 @@ PAGE = r"""<!doctype html>
   --next-ring: rgba(76, 112, 49, .12); --next-sheen: rgba(255, 255, 255, .9);
   color-scheme: light;
 }
-[data-theme="dark"] {
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+  --ground: #0e170d;
+  --wash-1: #24401c; --wash-2: #13260f; --wash-3: #3a3014; --wash-4: #1a3a28; --orb: rgba(150, 200, 100, .14);
+  --ink: #f4ead2; --ink-2: #c9c1a8; --ink-3: #a29c86;
+  --brand: #a9cd86; --brand-ink: #c3df9f; --brand-soft: rgba(169, 205, 134, .14);
+  --glass: rgba(30, 44, 26, .45); --glass-strong: rgba(52, 76, 44, .82);
+  --glass-edge: rgba(255, 246, 220, .1); --glass-line: rgba(255, 246, 220, .09);
+  --shadow: 0 1px 0 rgba(255,246,220,.07) inset, 0 20px 44px -22px rgba(0,0,0,.7), 0 3px 10px -4px rgba(0,0,0,.4);
+  --shadow-lift: 0 1px 0 rgba(255,246,220,.1) inset, 0 28px 54px -24px rgba(0,0,0,.8), 0 6px 14px -6px rgba(0,0,0,.5);
+  --a: #b4dc93; --a-bg: rgba(140, 200, 100, .16);
+  --b: #f0c374; --b-bg: rgba(240, 180, 80, .16);
+  --c: #bdb6a0; --c-bg: rgba(200, 190, 160, .12);
+  --wait: #f2b85e; --wait-bg: rgba(240, 170, 70, .16);
+  --bar: rgba(169, 205, 134, .16);
+  --sheen: rgba(255, 246, 220, .1);
+  --rim-1: rgba(255, 246, 220, .3); --rim-2: rgba(255, 246, 220, .04); --rim-3: rgba(169, 205, 134, .14);
+  --next-ring: rgba(169, 205, 134, .28); --next-sheen: rgba(255, 246, 220, .16);
+  color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
   --ground: #0e170d;
   --wash-1: #24401c; --wash-2: #13260f; --wash-3: #3a3014; --wash-4: #1a3a28; --orb: rgba(150, 200, 100, .14);
   --ink: #f4ead2; --ink-2: #c9c1a8; --ink-3: #a29c86;
@@ -71,7 +87,7 @@ PAGE = r"""<!doctype html>
 [hidden] { display: none !important; }
 html { background: var(--ground); color: var(--ink); -webkit-text-size-adjust: 100%; scrollbar-color: var(--bar) transparent;
   transition: color .5s var(--ease); }
-body { margin: 0; min-height: 100vh; font-size: 15px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+body { margin: 0; min-height: 100vh; background: var(--ground); color: var(--ink); font-size: 15px; line-height: 1.5; font-variant-numeric: tabular-nums; }
 .sky { position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background:
     radial-gradient(60vw 55vh at 8% 0%, var(--wash-1), transparent 70%),
@@ -87,7 +103,8 @@ body { margin: 0; min-height: 100vh; font-size: 15px; line-height: 1.5; font-var
 ::selection { background: var(--brand); color: var(--ground); }
 :focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 10px; }
 a { color: var(--brand-ink); text-underline-offset: 3px; }
-main { max-width: 1240px; margin: 0 auto; padding: 28px 24px 40px; }
+main { max-width: 1240px; margin: 0 auto; padding-block: 28px 40px;
+  padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px)); }
 
 .glass { position: relative; isolation: isolate; background: var(--glass); border: 1px solid var(--glass-edge); border-radius: var(--radius);
   box-shadow: var(--shadow); -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%); }
@@ -228,7 +245,7 @@ footer { margin-top: 48px; display: flex; flex-wrap: wrap; gap: 14px 24px; align
   .field.search { flex: 1; } .field input { width: 100%; }
 }
 @media (max-width: 560px) {
-  main { padding: 18px 16px 32px; }
+  main { padding-block: 18px 32px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
   header { grid-template-columns: 1fr; gap: 14px; }
   .title { border-left: 0; padding-left: 0; }
   .mark { width: 92px; }
@@ -245,9 +262,9 @@ footer { margin-top: 48px; display: flex; flex-wrap: wrap; gap: 14px 24px; align
   *, *::before, *::after { transition: none !important; }
 }
 </style>
-</head>
-<body>
-<div class="sky" aria-hidden="true"></div>
+"""
+
+BODY = r"""<div class="sky" aria-hidden="true"></div>
 <main>
 <header>
   <div class="mark" role="img" aria-label="The Buddy Social"></div>
@@ -277,16 +294,16 @@ footer { margin-top: 48px; display: flex; flex-wrap: wrap; gap: 14px 24px; align
     <div class="mark" role="img" aria-label="The Buddy Social"></div>
     <span>Created by <b>Aditya Bhatnagar</b> · The Buddy Social</span>
   </div>
-  <span>Made by Job Buddy from tracker.xlsx in this folder. Nothing here is sent anywhere.</span>
+  <span id="where">Made by Job Buddy from tracker.xlsx in this folder. Nothing here is sent anywhere.</span>
 </footer>
 </main>
 
 <script id="data" type="application/json">__DATA__</script>
 <script>
-const D = JSON.parse(document.getElementById('data').textContent);
+let D = JSON.parse(document.getElementById('data').textContent);
 const STAGES = ['Found', 'Applied', 'Acknowledged', 'Assessment', 'Interview', 'Offer'];
 const CLOSED = ['Rejected', 'Withdrawn', 'Ghosted'];
-const today = new Date(D.generated + 'T12:00:00');
+let today = new Date((D.generated || new Date().toISOString().slice(0, 10)) + 'T12:00:00');
 const h = (tag, attrs = {}, ...kids) => {
   const e = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
@@ -319,15 +336,20 @@ const dateLong = d => d.toLocaleDateString(undefined, { day: 'numeric', month: '
 const root = document.documentElement, themeBtn = document.getElementById('theme');
 const setTheme = t => { root.dataset.theme = t;
   themeBtn.setAttribute('aria-label', t === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'); };
-try { const saved = localStorage.getItem('jb-theme'); if (saved === 'dark' || saved === 'light') setTheme(saved); } catch (e) {}
+let savedTheme = null;
+try { savedTheme = localStorage.getItem('jb-theme'); } catch (e) {}
+setTheme(savedTheme === 'dark' ? 'dark' : 'light');
 themeBtn.onclick = () => { const t = root.dataset.theme === 'dark' ? 'light' : 'dark'; setTheme(t);
   try { localStorage.setItem('jb-theme', t); } catch (e) {} };
 
-const tracks = [...new Set(D.rows.map(r => r.Track).filter(Boolean))];
 const sel = document.getElementById('track');
-sel.append(h('option', { value: '' }, 'All tracks'), ...tracks.map(t => h('option', { value: t }, t)));
-document.getElementById('track-field').hidden = tracks.length < 2;
 const q = document.getElementById('q');
+function setTracks() {
+  const tracks = [...new Set(D.rows.map(r => r.Track).filter(Boolean))], keep = sel.value;
+  sel.replaceChildren(h('option', { value: '' }, 'All tracks'), ...tracks.map(t => h('option', { value: t }, t)));
+  sel.value = tracks.includes(keep) ? keep : '';
+  document.getElementById('track-field').hidden = tracks.length < 2;
+}
 
 function visible() {
   const t = sel.value, s = q.value.trim().toLowerCase();
@@ -362,8 +384,13 @@ function render() {
       ` Updated ${dateLong(today)}.`;
 
   if (!D.rows.length) {
-    app.replaceChildren(h('section', { class: 'glass empty-state' }, h('h2', {}, 'Your dashboard fills in as you go'),
-      h('p', {}, 'Ask Claude to “find me roles” or paste a job link. Every role Job Buddy scores lands here, with what to do next.')));
+    const [title, text] = {
+      loading: ['Loading your job search…', 'One moment while your latest tracker data arrives.'],
+      offline: ['Open this from your Claude sidebar', 'Your dashboard data lives in your Claude account. Open the page from Claude, signed in, to see it.'],
+    }[D.state] || ['Your dashboard fills in as you go',
+      'Ask Claude to “find me roles” or paste a job link. Every role Job Buddy scores lands here, with what to do next.'];
+    app.replaceChildren(h('section', { class: 'glass empty-state' }, h('h2', {}, title), h('p', {}, text)));
+    if (D.state) document.getElementById('status').textContent = '';
     return;
   }
 
@@ -458,18 +485,63 @@ function render() {
 }
 sel.onchange = render;
 q.oninput = render;
-render();
+
+// The artifact page keeps no data in its source: it reads one snapshot document that Job Buddy
+// writes to the artifact's private store after every tracker change, and follows it live.
+async function connect() {
+  D = { mode: 'artifact', state: 'loading', rows: [], gaps: {} }; render();
+  const timer = setTimeout(() => { if (D.state === 'loading') { D.state = 'offline'; render(); } }, 10000);
+  const db = window.claude && window.claude.use ? await window.claude.use('db') : null;
+  if (!db) { clearTimeout(timer); D.state = 'offline'; render(); return; }
+  db.doc('dashboard/snapshot').onSnapshot(snap => {
+    clearTimeout(timer);
+    const d = snap.exists ? snap.data() : null;
+    D = d && Array.isArray(d.rows) ? { mode: 'artifact', rows: d.rows, gaps: d.gaps || {}, generated: d.generated }
+      : { mode: 'artifact', rows: [], gaps: {} };
+    today = new Date((D.generated || new Date().toISOString().slice(0, 10)) + 'T12:00:00');
+    setTracks(); render();
+  }, () => { clearTimeout(timer); D.state = 'offline'; render(); });
+}
+function start() {
+  if (D.mode === 'artifact') {
+    document.getElementById('where').textContent =
+      'Kept up to date by Job Buddy from your tracker. Private to your Claude account; only you can see it unless you share it.';
+    connect();
+  } else { setTracks(); render(); }
+}
+start();
 </script>
-</body>
-</html>
 """
 
 
-def render(rows, gaps, generated):
-    """rows: tracker rows (dicts keyed by column name, dates as ISO strings); gaps: jb.gap_report()."""
-    data = {"generated": generated, "rows": rows,
+# Only the columns the page shows. Notes, Top Gap, sources and dates the page never displays stay
+# in the tracker, so the online copy holds as little as possible.
+SHOWN = ("Company", "Role", "Track", "Tier", "Fit Score", "Status", "Rejected At", "Next Action",
+         "Materials", "Job URL", "Last Update")
+
+
+def snapshot(rows, gaps, generated):
+    """The dashboard's data: what the local page embeds and what the artifact's store holds."""
+    rows = [{k: r[k] for k in SHOWN if r.get(k) not in (None, "")} for r in rows]
+    return {"generated": generated, "rows": rows,
             "gaps": {"skills": gaps.get("skills", [])[:5], "notes": gaps.get("notes", [])}}
+
+
+def _fill(part, data):
     # Embedded as JSON inside <script type="application/json">; escaping "<" stops any text in
     # the tracker (a job title, a note) from closing the tag and running as code.
     blob = json.dumps(data, ensure_ascii=False, default=str).replace("<", "\\u003c")
-    return PAGE.replace("__LOGO__", LOGO_MASK_PNG_B64).replace("__DATA__", blob)
+    return part.replace("__LOGO__", LOGO_MASK_PNG_B64).replace("__DATA__", blob)
+
+
+def render(rows, gaps, generated):
+    """The local dashboard.html: a complete document with the data embedded."""
+    head = '<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
+    return ('<!doctype html>\n<html lang="en" data-theme="light">\n<head>\n' + head + _fill(HEAD, {}) +
+            '</head>\n<body>\n' + _fill(BODY, snapshot(rows, gaps, generated)) + '</body>\n</html>\n')
+
+
+def render_artifact():
+    """The page published once as the user's private Claude artifact. It carries no data: the
+    publish step wraps it in a document, and the page reads dashboard/snapshot from its store."""
+    return _fill(HEAD, {}) + _fill(BODY, {"mode": "artifact", "rows": [], "gaps": {}})

@@ -346,6 +346,27 @@ class Dashboard(unittest.TestCase):
         self.assertNotIn("<", data)
         self.assertEqual(json.loads(data)["rows"][0]["Company"], evil)
 
+    def test_snapshot_holds_only_shown_columns(self):
+        jb.tracker_upsert(self.ws, {"Company": "Tessel", "Role": "RevOps Manager", "Tier": "A",
+                                    "Notes": "Recruiter: Jane Doe, 087 000 0000", "Top Gap": "Python"})
+        snap = json.loads((self.ws / "dashboard-data.json").read_text())
+        row = snap["rows"][0]
+        self.assertEqual(row["Company"], "Tessel")
+        self.assertNotIn("Notes", row)
+        self.assertNotIn("Top Gap", row)
+        self.assertNotIn("Jane", json.dumps(snap))
+
+    def test_artifact_page_has_no_data_or_skeleton(self):
+        jb.tracker_upsert(self.ws, {"Company": "Tessel", "Role": "RevOps Manager"})
+        jb.build_dashboard(self.ws, artifact_page=True)
+        page = (self.ws / "dashboard-artifact.html").read_text()
+        self.assertTrue(page.startswith("<title>"))
+        for tag in ("<!doctype", "<html", "<head>", "<body>"):
+            self.assertNotIn(tag, page.lower())
+        data = page.split('<script id="data" type="application/json">')[1].split("</script>")[0]
+        self.assertEqual(json.loads(data), {"mode": "artifact", "rows": [], "gaps": {}})
+        self.assertNotIn("Tessel", page)
+
     def test_no_external_requests(self):
         jb.build_dashboard(self.ws)
         page = (self.ws / "dashboard.html").read_text()
