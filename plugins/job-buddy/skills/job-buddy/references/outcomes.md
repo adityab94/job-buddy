@@ -30,13 +30,14 @@ stay where they are. `jb.py tracker upsert` writes rows, IDs, Last Update and bo
 matches existing roles on company + role, and refuses to write if a fixed column has moved.
 
 Without Python, write values into the other columns only and copy the formulas down from the
-row above: Applied? is `=IF(OR(M2="",M2="Found"),0,1)`; Callback? is
+row above: Applied? is `=IF(OR(M2="",M2="Found",M2="Expired"),0,1)`; Callback? is
 `=IF(OR(M2="Assessment",M2="Interview",M2="Offer",AND(M2="Rejected",OR(N2="Assessment",N2="Interview",N2="Final"))),1,0)`.
 
 ## Status values
 
 `Found` → `Applied` → `Acknowledged` → `Assessment` → `Interview` → `Offer`
-plus the end states `Rejected`, `Withdrawn`, `Ghosted`.
+plus the end states `Rejected`, `Withdrawn`, `Ghosted`, and `Expired` (the posting closed
+before they applied; it never counts as an application).
 
 Status is where the application is **now**. For rejections, Rejected At records how far it got,
 because "rejected at screening" and "rejected after final interview" mean completely different

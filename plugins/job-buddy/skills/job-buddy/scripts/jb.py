@@ -12,11 +12,17 @@ Usage (WORKSPACE is the user's job-search folder; JSON goes in on stdin and come
   jb.py calibrate WORKSPACE [--track T] [--apply]  [{"company","role","verdict": great|okay|no}]
   jb.py score   WORKSPACE                 {"track", "company", "role", "jd_file",
                                            "dimensions": {name: {"score", "quote"}},
-                                           "gaps": [{"skill", "dimension", "score_if_closed"}]}
+                                           "gaps": [{"skill", "dimension", "score_if_closed"}],
+                                           "posting": {"status": open|closed|unclear, "how"}}
   jb.py gaps    WORKSPACE [--track T] [--names]   which missing skills hold back the most roles
   jb.py seen    WORKSPACE check|add       lines of "company|title" on stdin
   jb.py tracker WORKSPACE list [--all]    tracker rows as JSON
   jb.py tracker WORKSPACE upsert          [{"Company", "Role", ...column: value}] on stdin
+  jb.py factcheck WORKSPACE FILE [--track T] [--ad JD_FILE] [--source FILE]...
+                                          figures and names in a tailored CV or letter (.md or .docx)
+                                          that aren't in the master CV or confirmed experience
+  jb.py docx    WORKSPACE FILE.md [--out FILE.docx] [--margin CM] [--size PT]
+                                          a plain, ATS-friendly Word file (A4; margin >= 1.5, size >= 10)
   jb.py dashboard WORKSPACE [--artifact-page]   write dashboard.html and dashboard-data.json (also
                                           after every upsert); --artifact-page adds the page to publish once
 
@@ -44,6 +50,7 @@ FIXED = {"Tier": "J", "Status": "M", "Rejected At": "N", "Applied?": "T", "Callb
 FORMULA_COLS = ("Applied?", "Callback?")
 DATE_COLS = {"Date Found", "Date Posted", "Date Applied", "Last Update"}
 MAX_ROW = 501  # the Funnel formulas cover rows 2-501
+ENDED = ("Rejected", "Withdrawn", "Ghosted", "Expired")  # Expired: the posting closed before they applied
 SHORT_LIST = ["ID", "Company", "Role", "Fit Score", "Tier", "Status", "Track", "Last Update", "Next Action"]
 
 
@@ -55,7 +62,7 @@ class Fail(Exception):
 
 def formulas(r):
     return {
-        "Applied?": f'=IF(OR(M{r}="",M{r}="Found"),0,1)',
+        "Applied?": f'=IF(OR(M{r}="",M{r}="Found",M{r}="Expired"),0,1)',
         "Callback?": f'=IF(OR(M{r}="Assessment",M{r}="Interview",M{r}="Offer",AND(M{r}="Rejected",'
                      f'OR(N{r}="Assessment",N{r}="Interview",N{r}="Final"))),1,0)',
     }
@@ -275,8 +282,17 @@ def score(ws, req):
                 if abs(v - c) <= 3]
     else:
         near = [f"{total} is within 3 points of the Tier {t} cut-off ({c})" for t, c in tiers.items() if abs(total - c) <= 3]
+    posting = req.get("posting") or {}
+    if posting and posting.get("status") not in ("open", "closed", "unclear"):
+        raise Fail("posting.status must be open, closed or unclear")
+    if posting:
+        posting = {"status": posting["status"], "how": str(posting.get("how") or "")[:200], "checked": today().isoformat()}
+    if posting.get("status") == "closed":
+        problems.append("the posting has closed: don't tailor for it; set its Status to Expired")
+    elif not posting:
+        problems.append("posting not checked: say whether it is still open (posting.status)")
     draft = track["rubric_status"].upper().startswith("DRAFT")
-    result = {"track": track["name"], "score": total, "get": res["get"], "want": res["want"], "tier": tier,
+    result = {"posting": posting or None, "track": track["name"], "score": total, "get": res["get"], "want": res["want"], "tier": tier,
               "draft": draft, "confidence": confidence,
               "dimensions": rows, "gaps": gaps, "unverified": weak, "near_cutoff": near, "problems": problems}
 
@@ -287,7 +303,8 @@ def score(ws, req):
         saved.write_text(json.dumps({
             "company": req.get("company") or "", "role": req.get("role") or "", "track": track["name"],
             "scored_on": today().isoformat(), "score": total, "get": res["get"], "want": res["want"], "tier": tier,
-            "dimensions": {r["dimension"]: r["score"] for r in rows}, "gaps": gaps}, indent=1, ensure_ascii=False),
+            "dimensions": {r["dimension"]: r["score"] for r in rows}, "gaps": gaps, "posting": posting or None},
+            indent=1, ensure_ascii=False),
             encoding="utf-8")
         result["saved"] = saved.relative_to(ws.resolve()).as_posix()
     return result
@@ -736,11 +753,11 @@ def build_dashboard(ws, artifact_page=False):
     if len(blob.encode()) > SNAPSHOT_LIMIT:
         # Too big for one store document: drop closed roles' notes first, then closed roles.
         for r in snap["rows"]:
-            if r.get("Status") in ("Rejected", "Withdrawn", "Ghosted"):
+            if r.get("Status") in ENDED:
                 r.pop("Notes", None)
         blob = json.dumps(snap, ensure_ascii=False, default=str)
         if len(blob.encode()) > SNAPSHOT_LIMIT:
-            snap["rows"] = [r for r in snap["rows"] if r.get("Status") not in ("Rejected", "Withdrawn", "Ghosted")]
+            snap["rows"] = [r for r in snap["rows"] if r.get("Status") not in ENDED]
             blob = json.dumps(snap, ensure_ascii=False, default=str)
             result["note"] = "closed roles left out of the online dashboard to fit its size limit"
     (ws / "dashboard-data.json").write_text(blob, encoding="utf-8")
@@ -748,6 +765,279 @@ def build_dashboard(ws, artifact_page=False):
         (ws / "dashboard-artifact.html").write_text(dashboard.render_artifact(), encoding="utf-8")
         result["written"].append("dashboard-artifact.html")
     return result
+
+
+# ---------- tailored documents: fact check and Word output ----------
+
+NUMBER_WORDS = {w: str(i) for i, w in enumerate(
+    "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen "
+    "sixteen seventeen eighteen nineteen twenty".split())}
+NUMBER_WORDS.update({w: str(n) for w, n in (("thirty", 30), ("forty", 40), ("fifty", 50), ("sixty", 60),
+                                            ("seventy", 70), ("eighty", 80), ("ninety", 90), ("hundred", 100),
+                                            ("dozen", 12), ("half", 0.5), ("double", 2), ("twice", 2))})
+# Capitalised words that are ordinary English at the start of a phrase, not names to check.
+COMMON_CAPS = set("""a an and as at by for from i in into of on or the to with my our your we me us it its
+this that these those dear hi hello regards sincerely best kind thank thanks yours warm many
+profile summary experience education skills skill certifications certification languages interests
+references projects project achievements key career employment work history contact about
+january february march april may june july august september october november december
+jan feb mar apr jun jul aug sep sept oct nov dec monday tuesday wednesday thursday friday
+present current now today role team manager senior junior lead head director analyst officer
+cv resume cover letter page email phone mobile linkedin address""".split())
+
+
+def doc_text(path):
+    """Plain text from a .md/.txt file or a .docx (paragraphs kept as lines)."""
+    path = Path(path)
+    if path.suffix.lower() == ".docx":
+        import zipfile
+        with zipfile.ZipFile(path) as z:
+            xml = z.read("word/document.xml").decode("utf-8", "replace")
+        xml = re.sub(r"<w:tab/>", "\t", xml)
+        paras = re.findall(r"<w:p[ >].*?</w:p>", xml, re.S)
+        import html
+        return "\n".join(html.unescape("".join(re.findall(r"<w:t[^>]*>(.*?)</w:t>", p, re.S))) for p in paras)
+    if path.suffix.lower() == ".pdf":
+        raise Fail(f"can't read PDF text: {path.name}. Save a plain-text copy next to it "
+                   f"({path.stem}.txt) and check against that")
+    return path.read_text(encoding="utf-8", errors="replace")
+
+
+def _num(token):
+    t = token.lower().replace(",", "").replace("€", "").replace("£", "").replace("$", "")
+    mult = 1
+    if t.endswith("k"):
+        t, mult = t[:-1], 1000
+    elif t.endswith(("m", "bn")):
+        t, mult = t.rstrip("bn").rstrip("m"), (1_000_000_000 if t.endswith("bn") else 1_000_000)
+    try:
+        v = float(t) * mult
+    except ValueError:
+        return None
+    return f"{v:g}"
+
+
+NUM_RE = re.compile(r"(?<![\w.])[€£$]?\d[\d,]*(?:\.\d+)?(?:k|m|bn)?(?![\w])", re.I)
+
+
+def numbers_in(text):
+    """{normalised value: [as written]} for every figure in the text, number words included."""
+    found = {}
+    for line in text.splitlines():
+        line = re.sub(r"^\s*\d+[.)]\s+", "", line)  # a numbered list's own numbering
+        for m in NUM_RE.finditer(line):
+            v = _num(m.group(0))
+            if v is not None:
+                found.setdefault(v, []).append(m.group(0))
+        for w in re.findall(r"[A-Za-z]+", line):
+            if w.lower() in NUMBER_WORDS:
+                found.setdefault(f"{float(NUMBER_WORDS[w.lower()]):g}", []).append(w)
+    return found
+
+
+def names_in(text):
+    """Words that look like names of employers, tools, places or qualifications."""
+    names = set()
+    for line in text.splitlines():
+        line = re.sub(r"^\s*(?:[-*•]|#+|\d+[.)])\s*", "", line)
+        for i, m in enumerate(re.finditer(r"[A-Za-z][A-Za-z0-9&+#.'’-]*", line)):
+            w = re.sub(r"(?:['’]s|[.'’-])+$", "", m.group(0))
+            if len(w) < 2 or w.lower() in COMMON_CAPS:
+                continue
+            inner = any(c.isupper() for c in w[1:]) or any(c.isdigit() for c in w)
+            starts = i == 0 or re.search(r"[.!?:]\s*$", line[:m.start()])
+            if inner or (w[0].isupper() and not starts):
+                names.add(w)
+    return names
+
+
+def master_cv(ws, track_name):
+    text = (ws / "profile.md").read_text(encoding="utf-8")
+    tracks = parse_tracks(text)
+    track = find_track(tracks, track_name)
+    sections = re.split(r"^## (?=Track\b)", text, flags=re.M)[1:]
+    sec = next((s for s in sections if s.split("\n", 1)[0].strip().endswith(track["name"])), "")
+    m = re.search(r"^- Master CV:\s*(\S.*)$", sec, re.M)
+    if not m or "<" in m.group(1):
+        raise Fail(f"track '{track['name']}' has no Master CV in profile.md")
+    p = (ws / m.group(1).strip()).resolve()
+    if p.suffix.lower() == ".pdf":
+        alt = p.with_suffix(".txt")
+        if not alt.is_file():
+            raise Fail(f"the master CV is a PDF, which this check can't read. Save its text as "
+                       f"{alt.relative_to(ws.resolve()).as_posix()} (a copy; the PDF stays as it is)")
+        p = alt
+    if not p.is_file():
+        raise Fail(f"master CV not found: {m.group(1).strip()}")
+    return p
+
+
+def confirmed_experience(ws):
+    text = (ws / "profile.md").read_text(encoding="utf-8")
+    m = re.search(r"^## Extra experience confirmed by me\s*$(.*?)(?=^## |\Z)", text, re.M | re.S)
+    return m.group(1) if m else ""
+
+
+def factcheck(ws, doc, track=None, ad=None, extra=None):
+    """Every figure and name in a tailored CV or letter must come from the master CV or the
+    user's confirmed experience. Ones found only in the job ad are listed separately: fine when
+    they describe the employer (its name, its tools in a cover letter), never as the user's own."""
+    doc = (ws / doc).resolve() if not Path(doc).is_absolute() else Path(doc)
+    if not doc.is_file():
+        raise Fail(f"document not found: {doc}")
+    cv = master_cv(ws, track)
+    mine = doc_text(cv) + "\n" + confirmed_experience(ws)
+    for e in extra or []:
+        mine += "\n" + doc_text(ws / e)
+    ad_text = doc_text(ws / ad) if ad else ""
+    text = doc_text(doc)
+
+    have, ad_nums = numbers_in(mine), numbers_in(ad_text)
+    nums = numbers_in(text)
+    unsupported = [{"figure": ws_[0], "count": len(ws_)} for v, ws_ in nums.items() if v not in have and v not in ad_nums]
+    from_ad = [{"figure": ws_[0], "count": len(ws_)} for v, ws_ in nums.items() if v not in have and v in ad_nums]
+
+    words = lambda t: {re.sub(r"(?:['’]s|[.'’-])+$", "", w).lower() for w in re.findall(r"[A-Za-z][A-Za-z0-9&+#.'’-]*", t)}
+    in_mine, in_ad = words(mine), words(ad_text)
+    names = sorted(names_in(text))
+    odd_names = [n for n in names if n.lower() not in in_mine and n.lower() not in in_ad]
+    ad_names = [n for n in names if n.lower() not in in_mine and n.lower() in in_ad]
+    return {"document": doc.name, "checked_against": [cv.name, "Extra experience confirmed by me"]
+            + ([Path(ad).name] if ad else []) + [Path(e).name for e in extra or []],
+            "ok": not unsupported and not odd_names,
+            "unsupported_figures": unsupported, "unknown_names": odd_names,
+            "figures_only_in_job_ad": from_ad, "names_only_in_job_ad": ad_names}
+
+
+def _xml(s):
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
+def _runs(text, size_half_pts, bold=False):
+    """Word runs for one line, with **bold** and *italic* markup."""
+    out = []
+    for part in re.split(r"(\*\*[^*]+\*\*|\*[^*]+\*)", text):
+        if not part:
+            continue
+        b, i = bold, False
+        if part.startswith("**") and part.endswith("**"):
+            part, b = part[2:-2], True
+        elif part.startswith("*") and part.endswith("*") and len(part) > 2:
+            part, i = part[1:-1], True
+        props = f'<w:sz w:val="{size_half_pts}"/><w:szCs w:val="{size_half_pts}"/>'
+        props = ("<w:b/>" if b else "") + ("<w:i/>" if i else "") + props
+        out.append(f'<w:r><w:rPr>{props}</w:rPr><w:t xml:space="preserve">{_xml(part)}</w:t></w:r>')
+    return "".join(out)
+
+
+def docx_from_markdown(md, out_path, margin_cm=2.0, font_pt=11.0, title=""):
+    """A plain, single-column Word document from simple Markdown (# name, ## section,
+    ### role line, - bullets, **bold**, *italic*). No tables, text boxes or images, so applicant
+    tracking systems read it cleanly. A4, Calibri."""
+    import zipfile
+    if margin_cm < 1.5:
+        raise Fail("margins below 1.5 cm make a CV hard to read; cut a bullet instead")
+    if font_pt < 10:
+        raise Fail("text below 10 pt is hard to read; cut a bullet instead")
+    sz = round(font_pt * 2)
+    body, first_line_done, after_name = [], False, False
+    for raw in md.splitlines():
+        line = raw.rstrip()
+        if not line.strip() or re.fullmatch(r"\s*(-{3,}|\*{3,})\s*", line):
+            after_name = False
+            continue
+        if line.startswith("# "):
+            body.append(f'<w:p><w:pPr><w:pStyle w:val="Title"/></w:pPr>{_runs(line[2:].strip(), sz + 12, True)}</w:p>')
+            title = title or line[2:].strip()
+            after_name = True
+        elif line.startswith("## "):
+            body.append(f'<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr>{_runs(line[3:].strip().upper(), sz + 1, True)}</w:p>')
+        elif line.startswith("### "):
+            body.append(f'<w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr>{_runs(line[4:].strip(), sz, True)}</w:p>')
+        elif re.match(r"^\s*[-*•]\s+", line):
+            text = re.sub(r"^\s*[-*•]\s+", "", line)
+            body.append('<w:p><w:pPr><w:pStyle w:val="ListBullet"/><w:numPr><w:ilvl w:val="0"/>'
+                        f'<w:numId w:val="1"/></w:numPr></w:pPr>{_runs(text, sz)}</w:p>')
+        else:
+            style = "Contact" if after_name else "Normal"
+            body.append(f'<w:p><w:pPr><w:pStyle w:val="{style}"/></w:pPr>{_runs(line.strip(), sz - 1 if after_name else sz)}</w:p>')
+        first_line_done = True
+    if not first_line_done:
+        raise Fail("the Markdown file is empty")
+    m = round(margin_cm * 567)
+    W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+    document = (f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document {W}><w:body>{"".join(body)}'
+                f'<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="{m}" w:right="{m}" w:bottom="{m}" '
+                f'w:left="{m}" w:header="567" w:footer="567" w:gutter="0"/></w:sectPr></w:body></w:document>')
+    font = '<w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Calibri" w:cs="Calibri"/>'
+    styles = (f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles {W}>'
+              f'<w:docDefaults><w:rPrDefault><w:rPr>{font}<w:sz w:val="{sz}"/><w:szCs w:val="{sz}"/>'
+              '<w:lang w:val="en-IE"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr>'
+              '<w:spacing w:after="80" w:line="252" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>'
+              '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>'
+              '<w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/>'
+              '<w:qFormat/><w:pPr><w:spacing w:after="40"/></w:pPr></w:style>'
+              '<w:style w:type="paragraph" w:styleId="Contact"><w:name w:val="Contact"/><w:basedOn w:val="Normal"/>'
+              '<w:pPr><w:spacing w:after="40"/></w:pPr></w:style>'
+              '<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/>'
+              '<w:next w:val="Normal"/><w:qFormat/><w:pPr><w:keepNext/><w:spacing w:before="200" w:after="60"/>'
+              '<w:pBdr><w:bottom w:val="single" w:sz="4" w:space="1" w:color="808080"/></w:pBdr>'
+              '<w:outlineLvl w:val="0"/></w:pPr></w:style>'
+              '<w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/>'
+              '<w:next w:val="Normal"/><w:qFormat/><w:pPr><w:keepNext/><w:spacing w:before="120" w:after="40"/>'
+              '<w:outlineLvl w:val="1"/></w:pPr></w:style>'
+              '<w:style w:type="paragraph" w:styleId="ListBullet"><w:name w:val="List Bullet"/><w:basedOn w:val="Normal"/>'
+              '<w:pPr><w:spacing w:after="40"/><w:ind w:left="357" w:hanging="357"/></w:pPr></w:style></w:styles>')
+    numbering = (f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:numbering {W}>'
+                 '<w:abstractNum w:abstractNumId="0"><w:multiLevelType w:val="singleLevel"/><w:lvl w:ilvl="0">'
+                 '<w:start w:val="1"/><w:numFmt w:val="bullet"/><w:lvlText w:val="•"/><w:lvlJc w:val="left"/>'
+                 '<w:pPr><w:ind w:left="357" w:hanging="357"/></w:pPr></w:lvl></w:abstractNum>'
+                 '<w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num></w:numbering>')
+    rel = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    ct = "application/vnd.openxmlformats-officedocument.wordprocessingml"
+    files = {
+        "[Content_Types].xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.'
+            'openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.'
+            'openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>'
+            f'<Override PartName="/word/document.xml" ContentType="{ct}.document.main+xml"/>'
+            f'<Override PartName="/word/styles.xml" ContentType="{ct}.styles+xml"/>'
+            f'<Override PartName="/word/numbering.xml" ContentType="{ct}.numbering+xml"/>'
+            '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-'
+            'properties+xml"/></Types>',
+        "_rels/.rels": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.'
+            f'openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="{rel}/officeDocument" '
+            'Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/'
+            'relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>',
+        "word/_rels/document.xml.rels": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships '
+            'xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            f'<Relationship Id="rId1" Type="{rel}/styles" Target="styles.xml"/>'
+            f'<Relationship Id="rId2" Type="{rel}/numbering" Target="numbering.xml"/></Relationships>',
+        "word/document.xml": document, "word/styles.xml": styles, "word/numbering.xml": numbering,
+        "docProps/core.xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp='
+            '"http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/'
+            f'elements/1.1/"><dc:title>{_xml(title)}</dc:title><dc:creator>{_xml(title)}</dc:creator></cp:coreProperties>',
+    }
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED) as z:
+            for name in ("[Content_Types].xml", "_rels/.rels", "word/_rels/document.xml.rels", "word/document.xml",
+                         "word/styles.xml", "word/numbering.xml", "docProps/core.xml"):
+                z.writestr(name, files[name])
+    except PermissionError:
+        raise Fail(f"{out_path.name} is open in another program; close it and try again", 3)
+    words = len(re.findall(r"\w+", re.sub(r"[#*•-]", " ", md)))
+    return {"written": out_path.name, "words": words, "margin_cm": margin_cm, "font_pt": font_pt}
+
+
+def make_docx(ws, src, dest=None, margin_cm=2.0, font_pt=11.0):
+    src = (ws / src).resolve()
+    if not src.is_file():
+        raise Fail(f"Markdown file not found: {src}")
+    dest = (ws / dest).resolve() if dest else src.with_suffix(".docx")
+    res = docx_from_markdown(src.read_text(encoding="utf-8"), dest, margin_cm, font_pt)
+    res["written"] = dest.relative_to(ws.resolve()).as_posix() if dest.is_relative_to(ws.resolve()) else str(dest)
+    return res
 
 
 # ---------- check and migrate ----------
@@ -896,6 +1186,17 @@ def main(argv):
         out(tracker_list(ws, "--all" in rest))
     elif cmd == "dashboard":
         out(build_dashboard(ws, artifact_page="--artifact-page" in rest))
+    elif cmd == "factcheck" and rest and not rest[0].startswith("--"):
+        opt = lambda f: rest[rest.index(f) + 1] if f in rest[:-1] else None
+        extra = [rest[i + 1] for i, a in enumerate(rest[:-1]) if a == "--source"]
+        out(factcheck(ws, rest[0], opt("--track"), opt("--ad"), extra))
+    elif cmd == "docx" and rest and not rest[0].startswith("--"):
+        opt = lambda f, d: rest[rest.index(f) + 1] if f in rest[:-1] else d
+        try:
+            margin, size = float(opt("--margin", 2.0)), float(opt("--size", 11.0))
+        except ValueError:
+            raise Fail("--margin and --size take numbers (cm and pt)")
+        out(make_docx(ws, rest[0], opt("--out", None), margin, size))
     elif cmd == "tracker" and rest[:1] == ["upsert"]:
         out(tracker_upsert(ws, read_stdin_json()))
     else:

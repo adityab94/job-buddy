@@ -304,7 +304,7 @@ BODY = r"""<div class="sky" aria-hidden="true"></div>
 <script>
 let D = JSON.parse(document.getElementById('data').textContent);
 const STAGES = ['Found', 'Applied', 'Acknowledged', 'Assessment', 'Interview', 'Offer'];
-const CLOSED = ['Rejected', 'Withdrawn', 'Ghosted'];
+const CLOSED = ['Rejected', 'Withdrawn', 'Ghosted', 'Expired'];
 let today = new Date((D.generated || new Date().toISOString().slice(0, 10)) + 'T12:00:00');
 const h = (tag, attrs = {}, ...kids) => {
   const e = document.createElement(tag);
@@ -324,7 +324,7 @@ const ICON_ARROW = '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>';
 const ICON_CHEVRON = '<path d="m6 9 6 6 6-6"/>';
 const days = d => d ? Math.round((today - new Date(d + 'T12:00:00')) / 864e5) : null;
 const status = r => r.Status || 'Found';
-const applied = r => status(r) !== 'Found';
+const applied = r => !['Found', 'Expired'].includes(status(r));
 const callback = r => ['Assessment', 'Interview', 'Offer'].includes(r.Status) ||
   (r.Status === 'Rejected' && ['Assessment', 'Interview', 'Final'].includes(r['Rejected At']));
 const quietFor = r => ['Applied', 'Acknowledged'].includes(r.Status) && days(r['Last Update']) >= 14 ? days(r['Last Update']) : 0;

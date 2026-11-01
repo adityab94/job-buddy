@@ -16,7 +16,9 @@ Install (Claude Code):
 - Finds roles: Indeed connector, company job boards on your watchlist, Built In Dublin, Jobs.ie,
   remote-job feeds, job-alert emails (Gmail) and any link you paste
 - Scores each role 0–100 with reasons (tier A, B or C)
-- Tailors your CV and cover letter for strong matches, honestly
+- Checks a job is still open before you spend time on it
+- Tailors your CV and cover letter for strong matches, honestly, with a fact check that flags
+  any figure or name not in your CV, and gives you Word files ready to send
 - Keeps an application tracker, with an easy dashboard page, and reviews what's working
 - Tells you which missing skill would move the most roles up a tier ("what should I learn?")
 
@@ -36,8 +38,8 @@ Things to say: "set me up", "find me roles", "is this a good fit? <link>",
   author or any server run by the author.
 - **Python scripts** in `skills/job-buddy/scripts/` (readable source, standard library plus
   openpyxl for the tracker): `jb.py` does score arithmetic, evidence checks, the seen list,
-  tracker writes and folder upgrades; `dashboard.py` and `logo.py` build the local dashboard
-  page, which makes no network requests.
+  tracker writes, folder upgrades, the CV fact check and Word files; `dashboard.py` and
+  `logo.py` build the local dashboard page, which makes no network requests.
 - **Browser collector** (`collector.js`), run in Claude's built-in browser only when you ask
   it to find roles. It reads public job listings from: boards-api.greenhouse.io,
   api.lever.co, api.ashbyhq.com, api.smartrecruiters.com / jobs.smartrecruiters.com,

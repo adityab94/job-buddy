@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.9.0 (1 Nov 2026)
+
+- **Is it still open?** Every role is checked before it's scored, and again before tailoring
+  if the check is more than 3 days old, so you never write a cover letter for a job that has
+  closed. Closed roles get the new status `Expired`, which never counts as an application.
+  Likely reposts are flagged too.
+- **A fact check on every tailored CV and cover letter** (`jb.py factcheck`). Any figure or
+  name that isn't in your CV or your confirmed experience is flagged before you see the file,
+  so "seven years", "grew pipeline 35%" or a tool you never used can't slip in. Things only
+  the job ad mentions are listed separately to check.
+- **Word files you can send.** `jb.py docx` turns the tailored CV and letter into plain,
+  single-column A4 Word documents that applicant tracking systems read cleanly, with no
+  extra software. It won't shrink margins below 1.5 cm or text below 10 pt.
+
 ## 0.8.2 (31 Oct 2026)
 
 - The Buddy Social icon for the plugin listing (`assets/icon.png`, 1024px, circular).

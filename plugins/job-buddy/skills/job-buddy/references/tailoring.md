@@ -31,8 +31,10 @@ These hold even when the user asks for "measurable achievements for every bullet
 template prompt says to: a bullet with no real number gets a concrete outcome in words, never
 an invented figure. Say so briefly if they asked for numbers you couldn't use.
 
-Before handing over, reread every line of the tailored text against the CV: each claim, number
-and name must be traceable to the CV or to something they confirmed.
+Before handing over, run `jb.py factcheck` (SKILL.md, Tailor materials) and reread every line
+of the tailored text against the CV: each claim, number and name must be traceable to the CV
+or to something they confirmed. The check catches figures and names; only rereading catches a
+stretched claim made of true words.
 
 ## Which CV to start from
 
@@ -85,7 +87,8 @@ graphics). Keep their contact details and section order consistent with the mast
 they ask otherwise. The summary and skills sections are where tailoring matters most; put
 the role's language there where it truthfully fits.
 
-File names: `<Name> - CV - <Company>.docx` and `<Name> - Cover letter - <Company>.docx`.
+File names: `<Name> - CV - <Company>.docx` and `<Name> - Cover letter - <Company>.docx`
+(`jb.py docx` makes them from the Markdown drafts).
 
 Do not chase a keyword-match percentage. Applicant tracking systems vary enormously, and
 stuffing keywords makes the CV worse for the human who reads it next. Use the JD's language

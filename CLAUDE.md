@@ -8,7 +8,7 @@ Context for Claude Code working in this repo. Read this first.
 search from a local folder: it builds a scoring rubric for their field, finds roles, scores them
 0–100 (tiers A/B/C), tailors CVs and cover letters honestly, and keeps an application tracker.
 Audience: job seekers in any field (Ireland/EU default), many non-technical, on Windows or Mac.
-Repo: https://github.com/adityab94/job-buddy · Licence: MIT · Current version: 0.8.2
+Repo: https://github.com/adityab94/job-buddy · Licence: MIT · Current version: 0.9.0
 
 ## Repo layout
 
@@ -23,9 +23,10 @@ plugins/job-buddy/
     SKILL.md                           the workflow Claude follows (setup, tracks, find, score, tailor, track, review)
     references/                        rubric-design.md, sources.md, tailoring.md, outcomes.md (read on demand)
     scripts/collector.js               browser collector (runs in Claude desktop's built-in browser)
-    scripts/jb.py                      core: score maths, evidence check, gap plan, seen list, tracker I/O, migrations
+    scripts/jb.py                      core: score maths, evidence check, gap plan, seen list, tracker I/O,
+                                       migrations, CV fact check, Word (.docx) output
     scripts/dashboard.py               renders the user's dashboard.html (self-contained, offline)
-    scripts/logo.py                    The Buddy Social wordmark as an embedded alpha mask (from the supplied logo)
+    scripts/logo.py, logo-mask.png     The Buddy Social wordmark (alpha mask) for the dashboard
     assets/workspace-template/         blank user workspace: profile.md, tracker.xlsx, seen.txt, cv/, outputs/, jds/, examples/
 feed/                                  shared Ireland feed: build_feed.py + watchlist-ie.json (built daily
                                        by .github/workflows/feed.yml, published to the `feed` branch)
@@ -73,7 +74,14 @@ Install lines (Claude Code): `/plugin marketplace add adityab94/job-buddy`, then
    "Extra experience confirmed by me"), outcomes not duties, employer-type emphasis, recruiter
    skim test, page rule (1 page <7 yrs, up to 1.5 from 7; margins >= ~1.5 cm, text >= 10 pt),
    cover letters around top 3 needs, ~200 words, specific ask. 30-day plans in
-   references/learning-plan.md (only links opened this session).
+   references/learning-plan.md (only links opened this session). Since 0.9: `jb.py factcheck`
+   flags figures/names in a tailored file not in the master CV or confirmed experience
+   (job-ad-only ones listed separately; matching is by value/word, not meaning; a PDF master
+   needs a `.txt` copy beside it), and `jb.py docx` writes plain single-column A4 Word files
+   (stdlib only; refuses margins < 1.5 cm or text < 10 pt).
+15. **Still-open check (v0.9).** Scoring records `posting: open|closed|unclear` (saved in
+   score.json); tailoring rechecks if older than 3 days. Closed roles get Status `Expired`,
+   which the Applied? formula and the dashboard treat as never applied.
 7. **Not a connector.** A hosted MCP connector can't reach the user's folder or built-in browser,
    and would mean storing CVs server-side. Plugin + GitHub marketplace is the distribution path.
    The shared feed is the exception that proves the rule: public job listings only, no user data.

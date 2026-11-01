@@ -574,5 +574,98 @@ class Migrate(unittest.TestCase):
         self.assertTrue(all(".backup-" in n for n in names))
 
 
+
+CV_TEXT = """Sam Doyle
+Revenue Operations Manager, Brightline Software, Dublin (2022-now)
+- Salesforce admin and lead routing for 40 sales reps
+- Built Zapier and HubSpot workflows that cut lead response time from 2 days to 4 hours
+Skills: Salesforce, HubSpot, Zapier, SQL, Looker"""
+
+
+class TailoredDocs(unittest.TestCase):
+    def setUp(self):
+        self.ws = make_ws()
+        (self.ws / "cv" / "sam.txt").write_text(CV_TEXT, encoding="utf-8")
+        self.out = self.ws / "outputs" / "Tessel"
+        self.out.mkdir(parents=True)
+
+    def write(self, text, name="cv.md"):
+        (self.out / name).write_text(text, encoding="utf-8")
+        return f"outputs/Tessel/{name}"
+
+    def test_factcheck_catches_invented_figures_and_tools(self):
+        doc = self.write("# Sam Doyle\n## Profile\nRevOps lead with seven years' experience.\n"
+                         "- Grew pipeline 35% with Workato and Python\n- Ran Salesforce for 40 reps\n")
+        r = jb.factcheck(self.ws, doc, ad="jds/tessel.txt")
+        self.assertFalse(r["ok"])
+        self.assertEqual(sorted(f["figure"] for f in r["unsupported_figures"]), ["35", "seven"])
+        self.assertEqual(r["unknown_names"], ["Python"])
+        self.assertEqual(r["names_only_in_job_ad"], ["RevOps", "Workato"])  # check before keeping
+
+    def test_factcheck_passes_true_rewrite(self):
+        doc = self.write("# Sam Doyle\n- Cut lead response from two days to 4 hours by rebuilding routing in HubSpot\n"
+                         "- Ran Salesforce for forty sales reps\n")
+        r = jb.factcheck(self.ws, doc, ad="jds/tessel.txt")
+        self.assertTrue(r["ok"], r)
+        self.assertEqual(r["unsupported_figures"], [])
+
+    def test_confirmed_experience_counts(self):
+        p = self.ws / "profile.md"
+        p.write_text(p.read_text().replace("## Change log", "## Extra experience confirmed by me\n"
+                                           "- Python scripts for data clean-up (confirmed)\n\n## Change log"))
+        r = jb.factcheck(self.ws, self.write("- Wrote Python scripts for data clean-up\n"))
+        self.assertEqual(r["unknown_names"], [])
+
+    def test_pdf_master_needs_text_copy(self):
+        (self.ws / "cv" / "sam.txt").unlink()
+        with self.assertRaises(jb.Fail) as e:
+            jb.factcheck(self.ws, self.write("- hello\n"))
+        self.assertIn("cv/sam.txt", str(e.exception))
+
+    def test_docx_round_trip(self):
+        import zipfile
+        doc = self.write("# Sam Doyle\nDublin | sam@example.com\n\n## Experience\n"
+                         "### RevOps Manager, Brightline (2022-now)\n- Ran **Salesforce** for 40 reps & 3 teams\n")
+        r = jb.make_docx(self.ws, doc)
+        path = self.ws / r["written"]
+        self.assertEqual(r["written"], "outputs/Tessel/cv.docx")
+        with zipfile.ZipFile(path) as z:
+            self.assertIn("word/numbering.xml", z.namelist())
+            self.assertIn('w:left="1134"', z.read("word/document.xml").decode())  # 2 cm margins
+        text = jb.doc_text(path)
+        self.assertIn("Ran Salesforce for 40 reps & 3 teams", text)
+        self.assertIn("EXPERIENCE", text)
+        self.assertTrue(jb.factcheck(self.ws, r["written"])["unsupported_figures"])  # "3 teams" isn't in the CV
+
+    def test_docx_limits(self):
+        doc = self.write("# Sam\n- x\n")
+        with self.assertRaises(jb.Fail):
+            jb.make_docx(self.ws, doc, margin_cm=1.2)
+        with self.assertRaises(jb.Fail):
+            jb.make_docx(self.ws, doc, font_pt=9)
+        code, res, _ = run_cli("docx", str(self.ws), doc, "--margin", "1.5", "--size", "10")
+        self.assertEqual((code, res["margin_cm"], res["font_pt"]), (0, 1.5, 10.0))
+
+
+class Posting(unittest.TestCase):
+    def setUp(self):
+        self.ws = make_ws()
+
+    def test_unchecked_closed_and_saved(self):
+        r = jb.score(self.ws, {"jd_file": "jds/tessel.txt", "dimensions": dims()})
+        self.assertTrue(any("posting not checked" in p for p in r["problems"]))
+        r = jb.score(self.ws, {"jd_file": "jds/tessel.txt", "dimensions": dims(),
+                               "posting": {"status": "closed", "how": "page says no longer accepting applications"}})
+        self.assertTrue(any("Expired" in p for p in r["problems"]))
+        saved = json.loads((self.ws / "jds/tessel.score.json").read_text())
+        self.assertEqual(saved["posting"]["status"], "closed")
+        with self.assertRaises(jb.Fail):
+            jb.score(self.ws, {"jd_file": "jds/tessel.txt", "dimensions": dims(), "posting": {"status": "maybe"}})
+
+    def test_expired_is_not_an_application(self):
+        self.assertIn('M2="Expired"', jb.formulas(2)["Applied?"])
+        self.assertIn("Expired", jb.ENDED)
+
+
 if __name__ == "__main__":
     unittest.main()
