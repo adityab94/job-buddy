@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.1 (14 Nov 2026)
+
+- Removed `icon` and `privacyPolicyUrl` from plugin.json: the Claude app doesn't recognise them
+  and marked the marketplace "synced with warnings". The privacy policy stays linked from the
+  README; the icon file stays in `assets/`.
+- Each release now includes `job-buddy.plugin`, a one-click install file for Cowork when
+  adding the GitHub marketplace doesn't work.
+
 ## 0.9.0 (1 Nov 2026)
 
 - **Is it still open?** Every role is checked before it's scored, and again before tailoring
