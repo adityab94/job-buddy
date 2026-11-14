@@ -119,6 +119,11 @@ Install lines (Claude Code): `/plugin marketplace add adityab94/job-buddy`, then
   version in plugin.json, marketplace.json and SKILL.md's `Version:` line, add a CHANGELOG.md
   entry, and run `python3 .github/scripts/check_release.py`. The GitHub check
   (`.github/workflows/check.yml`) runs that plus `claude plugin validate` on every push.
+- Every GitHub Release attaches `job-buddy-skill.zip` and `job-buddy.plugin` (the plugin folder
+  zipped without evals: `cd plugins/job-buddy && zip -r -X /tmp/job-buddy.plugin . -x '*.DS_Store'
+  -x '*__pycache__*' -x 'evals/*'`). Cowork's GitHub-marketplace install sometimes syncs without
+  installing (seen 14 Nov 2026); uploading the .plugin file works. plugin.json must hold only keys
+  the Claude app knows (it flagged `icon` and `privacyPolicyUrl`).
 - Before a release that changes SKILL.md or references/, run the eval suite:
   `cd plugins/job-buddy && claude plugin eval .` (see `evals/README.md`; uses plan usage).
 - Never commit personal data (CVs, profiles, trackers, outputs). `.gitignore` covers common paths.

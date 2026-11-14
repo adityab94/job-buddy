@@ -16,6 +16,11 @@ you from nothing to your first matches in about 15 minutes. No technical knowled
 3. Paste this and confirm: `adityab94/job-buddy`
 4. Find **job-buddy** in the list and click **Install**.
 
+**Not showing under Plugins → Yours after installing?** Download `job-buddy.plugin` from the
+[latest release](https://github.com/adityab94/job-buddy/releases/latest), drag it into a Cowork
+chat and click install. (This copy doesn't update itself: download the newest one when a new
+version comes out.)
+
 <!-- Screenshot to add: the Add marketplace box with adityab94/job-buddy pasted in -->
 
 ## 2. Make a folder for your job search (1 minute)
